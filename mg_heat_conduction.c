@@ -1,16 +1,19 @@
 // Author :  Akash Unnikrishnan and Prof. Surya Pratap Vanka
 // Affiliation : Indian Institute of Technology Gandhinagar and University of Illinois at Urbana Champaign
-// compile command: gcc multigrid_heat_conduction.c -lm
+// compile command: gcc mg_heat_conduction.c -lm
 // Run command: ./a.out
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////
+// Multigrid solver for Heat conduction equation
+// using Radial Basis Function Finite Difference (RBF-FD) method
+////////////////////////////////////////////////////////////////
+
 ////////////// Header files
 
 #include "header_files/heat_conduction.h"
 #include "header_files/openACC_functions.h"
 #include "init/init_heat_conduction.c"
 
-///////////////////////////////////////////////////////////////////////////////
 ////////////// Main Program
 
 int main()

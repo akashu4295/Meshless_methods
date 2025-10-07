@@ -16,7 +16,6 @@
 //        Please send your feedbacks and suggestions to akash.unnikrishnan@iitgn.ac.in
 ///////////////////////////////////////////////////////////////////////////////
 
-///////////////////////////////////////////////////////////////////////////////
 ////////////// Header files
 
 #include "header_files/fractional_step_solver.h"
@@ -24,7 +23,6 @@
 #include "header_files/openACC_functions.h"
 #include "init/init_TC.c"
 
-///////////////////////////////////////////////////////////////////////////////
 ////////////// Main Program
 
 int main()
@@ -80,12 +78,9 @@ int main()
         {
             steady_state_error = fractional_step_explicit(myPointStruct, field);
             printf("Time step: %d, Steady state error: %e\n", it, steady_state_error);
-            
             # pragma acc update host(field[0])
-            
             fprintf(file2,"%d, %e\n", it, steady_state_error);
             fflush(file2);
-            
             if (steady_state_error < parameters.steady_state_tolerance){
                 printf("Converged at time step: %d\n", it);
                 break;
@@ -103,12 +98,9 @@ int main()
         {
             steady_state_error = time_implicit_solver(myPointStruct, field);
             printf("Time step: %d, Steady state error: %e\n", it, steady_state_error);
-            
             # pragma acc update host(field[0])
-            
             fprintf(file2,"%d, %e\n", it, steady_state_error);
             fflush(file2);
-            
             if (steady_state_error < parameters.steady_state_tolerance){
                 printf("Converged at time step: %d\n", it);
                 break;
@@ -121,17 +113,14 @@ int main()
                 fclose(file1);
             }
         } 
+    fclose(file2); 
 
 ////////////// Time stepping loop end ///////////// 
-
     printf("Time_step, dt : %lf\n",parameters.dt);
     printf("Polynomial degree: %d\n",myPointStruct[0].poly_degree);
     printf("Time for execution (total): %lf\n", (double)(clock()-clock_program_begin)/CLOCKS_PER_SEC);
     
-    // Clear read data
     free_PointStructure(myPointStruct, parameters.num_levels);
     free_field(field, parameters.num_levels);
-
-    fclose(file2); 
     return 0;
 } 
