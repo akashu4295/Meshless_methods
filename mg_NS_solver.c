@@ -1,6 +1,6 @@
 // Author :  Akash Unnikrishnan and Prof. Surya Pratap Vanka
 // Affiliation : Indian Institute of Technology Gandhinagar and University of Illinois at Urbana Champaign
-// compile command: nvcc multigrid_heat_conduction.c -lm
+// compile command: gcc multigrid_heat_conduction.c -lm
 // Run command: ./a.out
 
 ///////////////////////////////////////////////////////////////////////////////
