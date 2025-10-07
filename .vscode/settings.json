@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "timple_solver.h": "c",
+        "openacc_functions.h": "c"
+    }
+}

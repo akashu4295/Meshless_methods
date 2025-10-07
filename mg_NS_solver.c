@@ -1,7 +1,20 @@
 // Author :  Akash Unnikrishnan and Prof. Surya Pratap Vanka
 // Affiliation : Indian Institute of Technology Gandhinagar and University of Illinois at Urbana Champaign
-// compile command: gcc multigrid_heat_conduction.c -lm
-// Run command: ./a.out
+// Date : June 2024
+// Version : 1.0
+
+///////////////////////////////////////////////////////////////////////////////
+// NOTES: This code is work in progress for parallelization using OpenACC directives.
+//        However it runs on cpu as well.
+//        compile command: gcc multigrid_heat_conduction.c -lm
+//        Run command: ./a.out or ./a.exe (depending on the OS)
+//        The code solves the incompressible Navier-Stokes equations using a fractional step method or time implicit method.
+//        The spatial discretization is done using polyharmonic spline radial basis functions (PHS-RBF) with appended polynomial basis functions.
+//        The linear systems are solved using a geometric multigrid method with Jacobi smoothing.
+//        This code is developed for educational and research purposes only.
+//        Please acknowledge the use of this code in any publications or presentations.
+//        Please send your feedbacks and suggestions to akash.unnikrishnan@iitgn.ac.in
+///////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////
 ////////////// Header files
@@ -45,7 +58,6 @@ int main()
 ////////////// Setting up the boudary condition (Lid driven cavity) /////////////
     
     AllocateMemoryFieldVariables(&field, myPointStruct, parameters.num_levels);
-
     initial_conditions(myPointStruct, field, 1);
     boundary_conditions(myPointStruct, field, 1);
     parameters.dt = calculate_dt(&myPointStruct[0]);
@@ -53,18 +65,16 @@ int main()
     printf("Time to setup the problem in cpu: %lf\n", (double)(clock()-clock_program_begin)/CLOCKS_PER_SEC);
 
 ////////////// Copy data to GPU memory /////////////
+
     clock_start = clock();    // Start the clock
     copyin_essentials_to_gpu(myPointStruct);
     copyin_field_to_gpu(field, myPointStruct);
     copyin_parameters_to_gpu();
-
     printf("Time taken to copy data to GPU: %lf\n", (double)(clock()-clock_start)/CLOCKS_PER_SEC);
-
-////////////// Time stepping ////////////// 
-//////////// Copy data back and check the rms error /////
     
-    file2 = fopen("Convergence.csv", "w"); // Write data to a file
+////////////// Time stepping loop start and writing solution files///////////// 
 
+    file2 = fopen("Convergence.csv", "w"); // Write data to a file
     if (parameters.fractional_step)
         for (int it = 0; it<parameters.num_time_steps; it++ ) 
         {
@@ -111,7 +121,9 @@ int main()
                 fclose(file1);
             }
         } 
-    
+
+////////////// Time stepping loop end ///////////// 
+
     printf("Time_step, dt : %lf\n",parameters.dt);
     printf("Polynomial degree: %d\n",myPointStruct[0].poly_degree);
     printf("Time for execution (total): %lf\n", (double)(clock()-clock_program_begin)/CLOCKS_PER_SEC);
