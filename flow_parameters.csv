@@ -63,3 +63,5 @@ Re: Reynolds number (based on domain length and characteristic velocity)
 facRe: factor to multiply Re to increase or decrease diffusion (default: 1.0)
 
 facdt: factor to multiply time step to increase or decrease it (default: 1.0)
+
+fractional_step: 1 to use fractional step method, 0 to use time-implicit solver
