@@ -26,16 +26,16 @@
 // Fractional Step Explicit Solver Modules
 
 double fractional_step_explicit(PointStructure* myPointStruct, FieldVariables* field);
-void calculate_intermediate_velocity(PointStructure* myPointStruct, FieldVariables* field);
-void calculate_mass_residual(PointStructure* myPointStruct, FieldVariables* field);
-void calculate_boundary_dpdn(PointStructure* myPointStruct, FieldVariables* field);
-void multigrid_Poisson_solver(PointStructure* myPointStruct, FieldVariables* field);
-void relaxation(PointStructure* myPointStruct, FieldVariables* field);
-void calculate_residuals(PointStructure* myPointStruct, FieldVariables* field);
-void restrict_residuals(PointStructure* myPointStruct_f, PointStructure* myPointStruct_c, FieldVariables* field_f, FieldVariables* field_c);
-void prolongate_corrections(PointStructure* myPointStruct_f, PointStructure* myPointStruct_c, FieldVariables* field_f, FieldVariables* field_c);
-void update_velocity(PointStructure* myPointStruct, FieldVariables* field);
-void update_boundary_pressure(PointStructure* myPointStruct, FieldVariables* field);
+void FS_calculate_intermediate_velocity(PointStructure* myPointStruct, FieldVariables* field);
+void FS_calculate_mass_residual(PointStructure* myPointStruct, FieldVariables* field);
+void FS_calculate_boundary_dpdn(PointStructure* myPointStruct, FieldVariables* field);
+void FS_multigrid_Poisson_solver(PointStructure* myPointStruct, FieldVariables* field);
+void FS_relaxation(PointStructure* myPointStruct, FieldVariables* field);
+void FS_calculate_residuals(PointStructure* myPointStruct, FieldVariables* field);
+void FS_restrict_residuals(PointStructure* myPointStruct_f, PointStructure* myPointStruct_c, FieldVariables* field_f, FieldVariables* field_c);
+void FS_prolongate_corrections(PointStructure* myPointStruct_f, PointStructure* myPointStruct_c, FieldVariables* field_f, FieldVariables* field_c);
+void FS_update_velocity(PointStructure* myPointStruct, FieldVariables* field);
+void FS_update_boundary_pressure(PointStructure* myPointStruct, FieldVariables* field);
 
 /////////////////////////////////////////////////////////////////////////////
 // Function Definitions
@@ -44,7 +44,7 @@ void update_boundary_pressure(PointStructure* myPointStruct, FieldVariables* fie
 /////////////////////////////////////////////////////////////////////////////
 // Fractional Step Explicit Solver Modules
 /////////////////////////////////////////////////////////////////////////////
-double fractional_step_explicit(PointStructure* myPointStruct, FieldVariables* field){   
+double FS_fractional_step_explicit(PointStructure* myPointStruct, FieldVariables* field){   
     double steady_state_error = 0.0;
     # pragma acc parallel loop present(field, myPointStruct)
     for (int i = 0; i < myPointStruct[0].num_nodes; i++){
@@ -54,11 +54,11 @@ double fractional_step_explicit(PointStructure* myPointStruct, FieldVariables* f
             field[0].w_old[i] = field[0].w[i];
     }
 
-    calculate_intermediate_velocity(&myPointStruct[0], &field[0]);
-    calculate_mass_residual(&myPointStruct[0], &field[0]);
-    calculate_boundary_dpdn(&myPointStruct[0], &field[0]);
-    multigrid_Poisson_solver(myPointStruct, field);
-    update_velocity(&myPointStruct[0], &field[0]);
+    FS_calculate_intermediate_velocity(&myPointStruct[0], &field[0]);
+    FS_calculate_mass_residual(&myPointStruct[0], &field[0]);
+    FS_calculate_boundary_dpdn(&myPointStruct[0], &field[0]);
+    FS_multigrid_Poisson_solver(myPointStruct, field);
+    FS_update_velocity(&myPointStruct[0], &field[0]);
 
     # pragma acc parallel loop present(field, myPointStruct) reduction(+:steady_state_error)
     for (int i = 0; i < myPointStruct[0].num_nodes; i++){
@@ -70,7 +70,7 @@ double fractional_step_explicit(PointStructure* myPointStruct, FieldVariables* f
     return steady_state_error;
 }
 
-void calculate_intermediate_velocity(PointStructure* myPointStruct, FieldVariables* field){
+void FS_calculate_intermediate_velocity(PointStructure* myPointStruct, FieldVariables* field){
     
     int num_nodes = myPointStruct->num_nodes;
     int num_cloud_points = myPointStruct->num_cloud_points;
@@ -113,7 +113,7 @@ void calculate_intermediate_velocity(PointStructure* myPointStruct, FieldVariabl
     # pragma acc update host(field[0].u_new[:num_nodes], field[0].v_new[:num_nodes])
 }
 
-void calculate_mass_residual(PointStructure* myPointStruct, FieldVariables* field){
+void FS_calculate_mass_residual(PointStructure* myPointStruct, FieldVariables* field){
     
     int num_nodes = myPointStruct->num_nodes;
     int num_cloud_points = myPointStruct->num_cloud_points;
@@ -130,7 +130,7 @@ void calculate_mass_residual(PointStructure* myPointStruct, FieldVariables* fiel
             field->source[i] = parameters.rho*(field->dpdx[i]+field->dpdy[i]+field->dpdz[i])/parameters.dt;
 }
 
-void calculate_boundary_dpdn(PointStructure* myPointStruct, FieldVariables* field){
+void FS_calculate_boundary_dpdn(PointStructure* myPointStruct, FieldVariables* field){
     double dpdx, dpdy, dpdz;
     // Copy only boundary normals to gpu
     # pragma acc parallel loop present(field, parameters, myPointStruct, zeros[:myPointStruct->num_nodes])
@@ -147,25 +147,25 @@ void calculate_boundary_dpdn(PointStructure* myPointStruct, FieldVariables* fiel
     }
 }
 
-void multigrid_Poisson_solver(PointStructure* myPointStruct, FieldVariables* field){
+void FS_multigrid_Poisson_solver(PointStructure* myPointStruct, FieldVariables* field){
     for (int icycle = 0; icycle < parameters.num_vcycles; icycle++){
         for (int ilev = 0; ilev < parameters.num_levels; ilev++){
-            relaxation(&myPointStruct[ilev], &field[ilev]);
-            calculate_residuals(&myPointStruct[ilev], &field[ilev]);
+            FS_relaxation(&myPointStruct[ilev], &field[ilev]);
+            FS_calculate_residuals(&myPointStruct[ilev], &field[ilev]);
             if (ilev != parameters.num_levels-1){
-                restrict_residuals(&myPointStruct[ilev], &myPointStruct[ilev+1], &field[ilev], &field[ilev+1]);
+                FS_restrict_residuals(&myPointStruct[ilev], &myPointStruct[ilev+1], &field[ilev], &field[ilev+1]);
                 }
             }
         for (int ilev = parameters.num_levels-1; ilev > 0; ilev--){
-            prolongate_corrections(&myPointStruct[ilev-1], &myPointStruct[ilev], &field[ilev-1], &field[ilev]);
+            FS_prolongate_corrections(&myPointStruct[ilev-1], &myPointStruct[ilev], &field[ilev-1], &field[ilev]);
             if (ilev != 1) 
-                relaxation(&myPointStruct[ilev-1], &field[ilev-1]);
+                FS_relaxation(&myPointStruct[ilev-1], &field[ilev-1]);
         }   
         // update_boundary_pressure(&myPointStruct[0], &field[0]);
     } 
 }
 
-void relaxation(PointStructure* mypointstruct, FieldVariables* field){
+void FS_relaxation(PointStructure* mypointstruct, FieldVariables* field){
     # pragma acc loop
     for (int iter = 0; iter < parameters.num_relax; iter++){
         # pragma acc parallel loop present(field, parameters, mypointstruct)
@@ -195,7 +195,7 @@ void relaxation(PointStructure* mypointstruct, FieldVariables* field){
     }
 }
 
-void restrict_residuals(PointStructure* mypointStruct_f, PointStructure* mypointStruct_c, 
+void FS_restrict_residuals(PointStructure* mypointStruct_f, PointStructure* mypointStruct_c, 
                                                     FieldVariables* field_f, FieldVariables* field_c){
     # pragma acc parallel loop present(field_f, field_c, mypointStruct_f, mypointStruct_c)
     for (int i = 0; i < mypointStruct_c->num_nodes; i++){
@@ -211,7 +211,7 @@ void restrict_residuals(PointStructure* mypointStruct_f, PointStructure* mypoint
     }
 }
 
-void prolongate_corrections(PointStructure* mypointStruct_f, PointStructure* mypointStruct_c, 
+void FS_prolongate_corrections(PointStructure* mypointStruct_f, PointStructure* mypointStruct_c, 
                                                     FieldVariables* field_f, FieldVariables* field_c){
     # pragma acc parallel loop present(field_f, field_c, mypointStruct_f, mypointStruct_c)
     for (int i = 0; i < mypointStruct_f->num_nodes; i++){
@@ -233,7 +233,7 @@ void prolongate_corrections(PointStructure* mypointStruct_f, PointStructure* myp
     }
 }
 
-void calculate_residuals(PointStructure* mypointStruct, FieldVariables* field){
+void FS_calculate_residuals(PointStructure* mypointStruct, FieldVariables* field){
     for (int i = 0; i < mypointStruct->num_nodes; i++){
         if (!mypointStruct->boundary_tag[i]){
             double sum = 0;
@@ -245,7 +245,7 @@ void calculate_residuals(PointStructure* mypointStruct, FieldVariables* field){
     }
 }
 
-void update_velocity(PointStructure* myPointStruct, FieldVariables* field)
+void FS_update_velocity(PointStructure* myPointStruct, FieldVariables* field)
 {
     multiply_sparse_matrix_vector_gpu(myPointStruct->Dx, field->p, field->dpdx, myPointStruct->cloud_index, myPointStruct->num_nodes, myPointStruct->num_cloud_points);
     multiply_sparse_matrix_vector_gpu(myPointStruct->Dy, field->p, field->dpdy, myPointStruct->cloud_index, myPointStruct->num_nodes, myPointStruct->num_cloud_points);
@@ -275,7 +275,7 @@ void update_velocity(PointStructure* myPointStruct, FieldVariables* field)
 }
 
 
-void update_boundary_pressure(PointStructure* mypointstruct, FieldVariables* field){
+void FS_update_boundary_pressure(PointStructure* mypointstruct, FieldVariables* field){
     double sumx, sumy, sumz, Ap, term;
 
     if (parameters.neumann_flag_boundary){

@@ -6,7 +6,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 ////////////// Header files
 
-// #include "header_files/fractional_step_solver.h"
+#include "header_files/fractional_step_solver.h"
 #include "header_files/timple_solver.h"
 #include "header_files/openACC_functions.h"
 #include "init/init_TC.c"
@@ -65,30 +65,52 @@ int main()
     
     file2 = fopen("Convergence.csv", "w"); // Write data to a file
 
-    for (int it = 0; it<parameters.num_time_steps; it++ ) 
-    {
-    // if (steady_state_error < 1.0e-6) parameters.iter_timple = 5;
-        // steady_state_error = fractional_step_explicit(myPointStruct, field);
-       steady_state_error = time_implicit_solver(myPointStruct, field);
-        printf("Time step: %d, Steady state error: %e\n", it, steady_state_error);
-        
-        # pragma acc update host(field[0])
-        
-        fprintf(file2,"%d, %e\n", it, steady_state_error);
-        fflush(file2);
-        
-        if (steady_state_error < parameters.steady_state_tolerance){
-            printf("Converged at time step: %d\n", it);
-            break;
+    if (parameters.fractional_step)
+        for (int it = 0; it<parameters.num_time_steps; it++ ) 
+        {
+            steady_state_error = fractional_step_explicit(myPointStruct, field);
+            printf("Time step: %d, Steady state error: %e\n", it, steady_state_error);
+            
+            # pragma acc update host(field[0])
+            
+            fprintf(file2,"%d, %e\n", it, steady_state_error);
+            fflush(file2);
+            
+            if (steady_state_error < parameters.steady_state_tolerance){
+                printf("Converged at time step: %d\n", it);
+                break;
+            }
+            if ((it % parameters.write_interval == 0) || (it == parameters.num_time_steps-1)){
+                file1 = fopen("Solution.csv", "w"); // Write data to a file
+                for (int i = 0; i < myPointStruct[0].num_nodes; i++)
+                    fprintf(file1, "%lf, %lf, %lf, %lf, %lf, %lf, %lf\n", myPointStruct[0].x[i], myPointStruct[0].y[i], myPointStruct[0].z[i], field[0].u[i], field[0].v[i], field[0].w[i], field[0].p_old[i]);
+                fflush(file1);	
+                fclose(file1);
+            }
         }
-        if ((it % parameters.write_interval == 0) || (it == parameters.num_time_steps-1)){
-            file1 = fopen("Solution.csv", "w"); // Write data to a file
-            for (int i = 0; i < myPointStruct[0].num_nodes; i++)
-                fprintf(file1, "%lf, %lf, %lf, %lf, %lf, %lf, %lf\n", myPointStruct[0].x[i], myPointStruct[0].y[i], myPointStruct[0].z[i], field[0].u[i], field[0].v[i], field[0].w[i], field[0].p_old[i]);
-            fflush(file1);	
-            fclose(file1);
-        }
-    } 
+    else
+        for (int it = 0; it<parameters.num_time_steps; it++ ) 
+        {
+            steady_state_error = time_implicit_solver(myPointStruct, field);
+            printf("Time step: %d, Steady state error: %e\n", it, steady_state_error);
+            
+            # pragma acc update host(field[0])
+            
+            fprintf(file2,"%d, %e\n", it, steady_state_error);
+            fflush(file2);
+            
+            if (steady_state_error < parameters.steady_state_tolerance){
+                printf("Converged at time step: %d\n", it);
+                break;
+            }
+            if ((it % parameters.write_interval == 0) || (it == parameters.num_time_steps-1)){
+                file1 = fopen("Solution.csv", "w"); // Write data to a file
+                for (int i = 0; i < myPointStruct[0].num_nodes; i++)
+                    fprintf(file1, "%lf, %lf, %lf, %lf, %lf, %lf, %lf\n", myPointStruct[0].x[i], myPointStruct[0].y[i], myPointStruct[0].z[i], field[0].u[i], field[0].v[i], field[0].w[i], field[0].p_old[i]);
+                fflush(file1);	
+                fclose(file1);
+            }
+        } 
     
     printf("Time_step, dt : %lf\n",parameters.dt);
     printf("Polynomial degree: %d\n",myPointStruct[0].poly_degree);

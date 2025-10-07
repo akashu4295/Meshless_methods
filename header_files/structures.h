@@ -38,6 +38,7 @@ struct parameters
     double facRe;//Reynolds number factor for defect correction
     double facdt;//dual time step factor
     double nu; // kinematic viscosity
+    bool fractional_step; // fractional step flag
     }parameters; // child created only once and used globally
 
 // Structure to represent the mesh data

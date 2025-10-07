@@ -89,6 +89,12 @@ void read_flow_parameters(char *filename) {
     printf("PARAMETERS: %s = %lf\n", ctemp, parameters.facRe);
     temp = fscanf(file, "%[^,],%lf\n", ctemp, &parameters.facdt);
     printf("PARAMETERS: %s = %lf\n", ctemp, parameters.facdt);
+    temp = fscanf(file, "%[^,],%d\n", ctemp, &temp1);
+    if (temp1 == 1)
+        parameters.fractional_step = true;
+    else
+        parameters.fractional_step = false;
+    printf("PARAMETERS: %s = %d\n", ctemp, parameters.fractional_step);
     if (temp == EOF){
         printf("Error: Unable to read the file\n");
         exit(1);
