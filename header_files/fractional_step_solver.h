@@ -44,7 +44,7 @@ void FS_update_boundary_pressure(PointStructure* myPointStruct, FieldVariables* 
 /////////////////////////////////////////////////////////////////////////////
 // Fractional Step Explicit Solver Modules
 /////////////////////////////////////////////////////////////////////////////
-double FS_fractional_step_explicit(PointStructure* myPointStruct, FieldVariables* field){   
+double fractional_step_explicit(PointStructure* myPointStruct, FieldVariables* field){   
     double steady_state_error = 0.0;
     # pragma acc parallel loop present(field, myPointStruct)
     for (int i = 0; i < myPointStruct[0].num_nodes; i++){

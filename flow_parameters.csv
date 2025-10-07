@@ -9,7 +9,7 @@ poisson_solver_tolerance,1e-8
 sor_parameter,1.6
 num_vcycles,10
 num_relax,5
-num_time_steps,1
+num_time_steps,10
 write_interval,10000
 neumann_flag_boundary,1
 time_step,0.1

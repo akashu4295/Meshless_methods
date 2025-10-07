@@ -32,7 +32,7 @@ void initial_conditions(PointStructure* myPointStruct, FieldVariables* myfieldva
 
 void boundary_conditions(PointStructure* myPointStruct, FieldVariables* myfieldvariables, int numlevels){
     double x, y, r;
-    double r_i = 0.5;
+    double r_i = 1.0; // Inner radius
     for (int ii = 0; ii < numlevels; ii++){
         for (int i = 0; i < myPointStruct[ii].num_nodes; i++){
             x = myPointStruct[ii].x[i]; y = myPointStruct[ii].y[i];
