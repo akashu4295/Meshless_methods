@@ -44,7 +44,7 @@ sor_parameter: over-relaxation parameter for SOR Poisson solver (1 < sor_paramet
 
 num_vcycles: no. of V-cycles for multigrid Poisson solver (recommended: 5 to 15)
 
-num_relax: no. of pre and post relaxations for multigrid Poisson solver (recommended: 2 to 10)
+num_relax: no. of pre and post relaxations for multigrid Poisson solver (recommended: 2 to 10), for single grid use higher values (recommended: 100 to 1000)
 
 num_time_steps: No. of timesteps: positive integer
 
