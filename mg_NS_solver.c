@@ -88,7 +88,7 @@ int main()
             if ((it % parameters.write_interval == 0) || (it == parameters.num_time_steps-1)){
                 file1 = fopen("Solution.csv", "w"); // Write data to a file
                 for (int i = 0; i < myPointStruct[0].num_nodes; i++)
-                    fprintf(file1, "%lf, %lf, %lf, %lf, %lf, %lf, %lf\n", myPointStruct[0].x[i], myPointStruct[0].y[i], myPointStruct[0].z[i], field[0].u[i], field[0].v[i], field[0].w[i], field[0].p_old[i]);
+                    fprintf(file1, "%lf, %lf, %lf, %lf, %lf, %lf, %lf\n", myPointStruct[0].x[i], myPointStruct[0].y[i], myPointStruct[0].z[i], field[0].u[i], field[0].v[i], field[0].w[i], field[0].p[i]);
                 fflush(file1);	
                 fclose(file1);
             }
