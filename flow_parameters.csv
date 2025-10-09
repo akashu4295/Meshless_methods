@@ -1,0 +1,67 @@
+domain_dimensions,2
+poly_deg,3
+phs_deg,3
+cloud_size_multiplier,2
+test_derivative,0
+courant_number,0.3
+steady_tolerance,1e-8
+poisson_solver_tolerance,1e-8
+sor_parameter,1.6
+num_vcycles,10
+num_relax,5
+num_time_steps,10
+write_interval,10000
+neumann_flag_boundary,1
+time_step,0.1
+iter_momentum,5
+iter_timple,1
+Re,10
+facRe,1.0
+facdt,1.0
+fractional_step,1
+
+
+
+//////////////////////// Dictionary //////////////////////////
+domain_dimensions: No. of dimensions of the domain (2D or 3D): integer from [2, 3]
+
+poly_deg: degree of appended polynomial: integer in range [2, 15]
+
+phs_deg: exponent of polyharmonic spline: integer with options: 3, 5, 7, 9, 11
+
+cloud_size_multiplier: float cloud_size=cloud_size_multiplier*(No. of appended polynomials) 
+(recommended: in range [1.5, 2.5])
+
+test_derivative: 1 to test derivative accuracy, 0 otherwise
+
+courant_number: [dt=2*Courant/lambda] where, lambda: sum of largest magnitude convection and diffusion eigen values
+
+steady_tolerance: solved to steady state till [avg(abs(phi_new - phi_old))/dt < steady_tolerance] for all variables
+
+poisson_solver_tolerance: used in iterative solvers for absolute and relative residuals (recommended: less than steady_tolerance)
+
+sor_parameter: over-relaxation parameter for SOR Poisson solver (1 < sor_parameter < 2, recommended: 1.5 to 1.9)
+
+num_vcycles: no. of V-cycles for multigrid Poisson solver (recommended: 5 to 15)
+
+num_relax: no. of pre and post relaxations for multigrid Poisson solver (recommended: 2 to 10)
+
+num_time_steps: No. of timesteps: positive integer
+
+write_interval: interval (in no. of time steps) to write output files
+
+neumann_flag_boundary: 1 to impose Neumann BC on all boundaries, 0 for Dirichlet BC
+
+time_step: time step size (choice will still be made in the code, based on courant number and diffusion stability if they are lower than this value)
+
+iter_momentum: no. of iterations of the solver
+
+iter_timple: no. of outer iterations for TIMPLE (recommended: 1)
+
+Re: Reynolds number (based on domain length and characteristic velocity)
+
+facRe: factor to multiply Re to increase or decrease diffusion (default: 1.0)
+
+facdt: factor to multiply time step to increase or decrease it (default: 1.0)
+
+fractional_step: 1 to use fractional step method, 0 to use time-implicit solver
