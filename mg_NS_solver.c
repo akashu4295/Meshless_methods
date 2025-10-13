@@ -21,7 +21,7 @@
 #include "header_files/fractional_step_solver.h"
 #include "header_files/timple_solver.h"
 #include "header_files/openACC_functions.h"
-#include "init/init_TC.c"
+#include "init/init_Slip_TC.c"
 
 ////////////// Main Program
 
