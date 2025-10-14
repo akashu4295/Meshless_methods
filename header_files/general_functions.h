@@ -231,4 +231,16 @@ void make_directory(const char* name) {
    #endif
 }
 
+void read_solution_csv(FieldVariables* field, PointStructure* myPointStruct, const char* filename) {
+    FILE* file = fopen(filename, "r");
+    if (file == NULL) {
+        printf("Error opening file: %s\n", filename);
+        return;
+    }
+    for (int i = 0; i < myPointStruct->num_nodes; i++) {
+        fscanf(file, "%lf,%lf,%lf,%lf,%lf,%lf,%lf", &myPointStruct->x[i], &myPointStruct->y[i], &myPointStruct->z[i], &field->u[i], &field->v[i], &field->w[i], &field->p[i]);
+    }
+    fclose(file);
+}
+
 #endif
