@@ -73,7 +73,6 @@ void calculate_intermediate_velocity_implicit(PointStructure* myPointStruct, Fie
     
     int num_nodes = myPointStruct->num_nodes;
     int num_cloud_points = myPointStruct->num_cloud_points;
-    int num_boundary_points = myPointStruct->num_boundary_nodes;
 
     double denom = 0;
     double temp1, temp2, temp3, temp4;
@@ -330,7 +329,6 @@ void prolongate_corrections(PointStructure* mypointStruct_f, PointStructure* myp
 void update_velocity_implicit(PointStructure* myPointStruct, FieldVariables* field){
     int num_nodes = myPointStruct->num_nodes;
     int num_cloud_points = myPointStruct->num_cloud_points;
-    int num_boundary_points = myPointStruct->num_boundary_nodes;
 
     multiply_sparse_matrix_vector_gpu(myPointStruct->Dx, field->pprime, field->dpdx, myPointStruct->cloud_index, num_nodes, num_cloud_points);
     multiply_sparse_matrix_vector_gpu(myPointStruct->Dy, field->pprime, field->dpdy, myPointStruct->cloud_index, num_nodes, num_cloud_points);

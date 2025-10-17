@@ -74,7 +74,6 @@ void FS_calculate_intermediate_velocity(PointStructure* myPointStruct, FieldVari
     
     int num_nodes = myPointStruct->num_nodes;
     int num_cloud_points = myPointStruct->num_cloud_points;
-    int num_boundary_points = myPointStruct->num_boundary_nodes;
     
 // x-momentum
     multiply_sparse_matrix_vector_gpu(myPointStruct->Dx, field->u, field->dpdx, myPointStruct->cloud_index, num_nodes, num_cloud_points);
@@ -117,7 +116,6 @@ void FS_calculate_mass_residual(PointStructure* myPointStruct, FieldVariables* f
     
     int num_nodes = myPointStruct->num_nodes;
     int num_cloud_points = myPointStruct->num_cloud_points;
-    int num_boundary_points = myPointStruct->num_boundary_nodes;
     
     multiply_sparse_matrix_vector_gpu(myPointStruct->Dx, field->u_new, field->dpdx, myPointStruct->cloud_index, num_nodes, num_cloud_points);
     multiply_sparse_matrix_vector_gpu(myPointStruct->Dy, field->v_new, field->dpdy, myPointStruct->cloud_index, num_nodes, num_cloud_points);

@@ -190,21 +190,27 @@ void free_PointStructure(PointStructure* myPointStruct, int num_levels) {
             free(myPointStruct[i].cloud_index[j]);
             free(myPointStruct[i].Dx[j]);
             free(myPointStruct[i].Dy[j]);
-            free(myPointStruct[i].Dz[j]);
+            if (parameters.dimension == 3)
+                free(myPointStruct[i].Dz[j]);
             free(myPointStruct[i].lap[j]);
-            free(myPointStruct[i].restr_mat[j]);
-            free(myPointStruct[i].prol_mat[j]);
+            if (parameters.num_levels > 1){
+                free(myPointStruct[i].restr_mat[j]);
+                free(myPointStruct[i].prol_mat[j]);
+            }
         }
         free(myPointStruct[i].cloud_index);
         free(myPointStruct[i].Dx);
         free(myPointStruct[i].Dy);
-        free(myPointStruct[i].Dz);
+        if (parameters.dimension == 3)
+            free(myPointStruct[i].Dz);
         free(myPointStruct[i].lap);            
         free(myPointStruct[i].lap_Poison);
-        free(myPointStruct[i].restr_mat);
-        free(myPointStruct[i].prol_mat);
-        free(myPointStruct[i].prolongation_points);
-        free(myPointStruct[i].restriction_points);
+        if (parameters.num_levels > 1){
+            free(myPointStruct[i].restr_mat);
+            free(myPointStruct[i].prol_mat);
+            free(myPointStruct[i].prolongation_points);
+            free(myPointStruct[i].restriction_points);
+        }
     }
     free(myPointStruct);
 }
