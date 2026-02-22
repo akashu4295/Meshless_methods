@@ -78,6 +78,8 @@ from .constants import (
     
     # Colors
     COLORS,
+    COLORS_DARK,
+    COLORS_LIGHT,
     
     # Application metadata
     APP_NAME,
@@ -119,6 +121,12 @@ from .constants import (
     FILE_EXTENSIONS,
     FILE_DIALOG_WIDTH,
     FILE_DIALOG_HEIGHT,
+)
+
+from .theme_registry import (
+    _THEMED_TEXTS,
+    themed_texts,
+    update_themed_texts,
 )
 
 from .themes import (
@@ -184,6 +192,8 @@ __all__ = [
     'DEFAULT_SAVE_PATH',
     'SCREENSHOT_SCALE',
     'COLORS',
+    'COLORS_DARK',
+    'COLORS_LIGHT',
     'APP_NAME',
     'APP_VERSION',
     'APP_FULL_NAME',
@@ -223,4 +233,11 @@ __all__ = [
     'initialize_all_themes',
     'apply_dark_theme',
     'apply_light_theme',
+    'toggle_theme',
+
+    # REGISTRY
+    '_THEMED_TEXTS',
+    'themed_texts',
+    'update_themed_texts',
+
 ]

@@ -156,6 +156,7 @@ __all__ = [
     'show_application_state_callback',
     'check_for_updates_callback',
     'report_bug_callback',
+    'toggle_theme_callback',
 
     # boundary conditions callbacks
     'show_bc_window_callback',

@@ -154,7 +154,6 @@ def create_gui(themes: dict):
     logger.set_enable_gui(True)
     logger.info("GUI logging enabled")
     print("Step F: GUI creation complete")
-    
     return main_window
 
 

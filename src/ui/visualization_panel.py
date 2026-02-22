@@ -23,6 +23,7 @@ from src.config import (
     FILE_EXTENSIONS,
     FILE_DIALOG_WIDTH,
     FILE_DIALOG_HEIGHT,
+    themed_texts,
 )
 from src.callbacks import (
     update_plot_callback,
@@ -59,7 +60,7 @@ def create_visualization_panel(themes: dict) -> int:
         
         # Plotting Options Section
         _create_plotting_options_section(themes)
-        dpg.add_spacer(height=3)
+        dpg.add_spacer(height=1)
         _create_paraview_ploter(themes)
         dpg.add_separator()
         dpg.add_spacer(height=4)
@@ -85,8 +86,10 @@ def _create_paraview_ploter(themes: dict):
         width=400,
         height=150,
     ):
-        dpg.add_text("ParaView executable not found.")
-        dpg.add_text("Please browse and select the ParaView executable.")
+        themed_texts("ParaView executable not found.", "info")
+        themed_texts("Please browse and select the ParaView executable.", "info")
+        # dpg.add_text("ParaView executable not found.")
+        # dpg.add_text("Please browse and select the ParaView executable.")
 
         dpg.add_spacer(height=10)
 
@@ -104,7 +107,8 @@ def _create_paraview_ploter(themes: dict):
 
 def _create_convergence_plot_section(themes: dict):
     """Create convergence plot with controls"""
-    dpg.add_text("Convergence Plot", color=COLORS["success"])
+    # dpg.add_text("Convergence Plot", color=COLORS["success"])
+    themed_texts("CONVERGENCE PLOT", "header")
     
     # Create plot
     with dpg.plot(
@@ -144,11 +148,13 @@ def _create_convergence_plot_section(themes: dict):
 
 def _create_plotting_options_section(themes: dict):
     """Create contour plotting controls"""
-    dpg.add_text("Plotting options", color=COLORS["success"])
-    
+    # dpg.add_text("Plotting options", color=COLORS["success"])
+    themed_texts("PLOTTING OPTIONS", "header")
+    dpg.add_spacer(height=3)
     # First row: VTK file, variable, colormap
     with dpg.group(horizontal=True):
-        dpg.add_text("VTK File:")
+        themed_texts("VTK File:","label")
+        # dpg.add_text("VTK File:")
         
         dpg.add_input_text(
             hint="VTK File",
@@ -166,8 +172,9 @@ def _create_plotting_options_section(themes: dict):
             show=True
         )
         
-        dpg.add_text("Variable:")
-        
+        # dpg.add_text("Variable:")
+        themed_texts("Variable:","label")
+
         dpg.add_combo(
             PLOT_VARIABLES,
             label="##Variable",
@@ -177,7 +184,8 @@ def _create_plotting_options_section(themes: dict):
             callback=change_variable_callback
         )
         
-        dpg.add_text("Colormap:")
+        # dpg.add_text("Colormap:")
+        themed_texts("Colormap:","label")
         
         dpg.add_combo(
             COLORMAPS,
@@ -220,7 +228,8 @@ def _create_plotting_options_section(themes: dict):
 
 def _create_logs_section(themes: dict):
     """Create logs display section"""
-    dpg.add_text("Logs", color=COLORS["success"])
+    # dpg.add_text("Logs", color=COLORS["success"])
+    themed_texts("LOGS", "header")
     
     # Scrollable child window for logs
     with dpg.child_window(
