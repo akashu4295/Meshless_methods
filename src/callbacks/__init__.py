@@ -26,6 +26,8 @@ from .solver_callbacks import (
     stop_solver_callback,
     check_solver_status_callback,
     validate_all_parameters_callback,
+    show_restart_callback,
+    show_init_callback,
 )
 
 # Mesh callbacks
@@ -107,6 +109,8 @@ __all__ = [
     'stop_solver_callback',
     'check_solver_status_callback',
     'validate_all_parameters_callback',
+    'show_restart_callback',
+    'show_init_callback',
     
     # Mesh callbacks
     'show_multigrid_callback',

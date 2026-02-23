@@ -39,18 +39,14 @@ from src.callbacks import (
     browse_geometry_file_callback,
     select_geometry_file_callback,
     show_bc_window_callback,
+    show_restart_callback,
+    show_init_callback,
 )
 
 
 def create_parameters_panel(themes: dict) -> int:
-    with dpg.child_window(
-        width=LEFT_PANEL_WIDTH,
-        border=True,
-        tag="parameters_panel"
-    ) as panel:
-
-        # ── VS Code-style collapsing sections ──────────────────────────────
-
+    with dpg.child_window(width=LEFT_PANEL_WIDTH, border=True,
+        tag="parameters_panel") as panel:
         with _explorer_section("GEOMETRY AND GRIDS", default_open=True):
             _create_geometry_section(themes)
             _section_gap()
@@ -82,8 +78,8 @@ def create_parameters_panel(themes: dict) -> int:
 
 class _explorer_section:
     """
-    Context manager that wraps a dpg.collapsing_header styled to look like
-    a VS Code sidebar section header (all-caps label, subtle separator,
+    Context manager that wraps a dpg.collapsing_header styled to a
+    sidebar section header (all-caps label, subtle separator,
     indented content).
     """
 
@@ -93,17 +89,13 @@ class _explorer_section:
         self._header = None
 
     def __enter__(self):
-        # The collapsing_header acts as the "folder row" in the explorer.
-        # bullet=False keeps DPG from drawing an extra ● marker.
         self._header = dpg.add_collapsing_header(
             label=self._title,
             default_open=self._default_open,
             bullet=False,
         )
-        # Indent children so they feel nested under the header.
         dpg.push_container_stack(self._header)
         dpg.add_spacer(height=3)
-        # Indent group so content sits slightly inset from the header arrow
         self._indent = dpg.add_group(indent=8)
         dpg.push_container_stack(self._indent)
         return self._header
@@ -118,19 +110,10 @@ def _section_gap():
     """Consistent vertical breathing room between sub-sections."""
     dpg.add_spacer(height=6)
 
-
-# def _labeled_row(label: str, widget_fn, *args, **kwargs):
-#     """Helper to put a fixed-width label beside any widget."""
-#     with dpg.group(horizontal=True):
-#         dpg.add_text(f"{label:<22}")
-#         return widget_fn(*args, **kwargs)
-
-
 # ── Sections ───────────────────────────────────────────────────────────────────
 
 def _create_solver_method_section(themes: dict):
     with dpg.group(horizontal=True):
-        # dpg.add_text("Method", color=COLORS["subheader"])
         themed_texts("Method","subheader")
         dpg.add_combo(
             items=SOLVER_METHODS,
@@ -140,19 +123,14 @@ def _create_solver_method_section(themes: dict):
             callback=show_implicit_callback
         )
     with dpg.tooltip("solver_method"):
-        # dpg.add_text("Select the solver method for the Navier-Stokes equations",
-        #              color=COLORS["info"])
         themed_texts("Select the solver method for the Navier-Stokes equations","info")
         dpg.add_separator()
-        # dpg.add_text("Implicit: more stable for large time steps, solves a linear system each step.")
-        # dpg.add_text("Explicit: faster for small meshes/time steps, needs careful stability tuning.")
         themed_texts("Implicit: more stable for large time steps, solves a linear system each step.","info")
         themed_texts("Explicit: faster for small meshes/time steps, needs careful stability tuning.","info")
 
 
 def _create_poisson_solver_method_section():
     with dpg.group(horizontal=True, tag="poisson_solver_method_group"):
-        # dpg.add_text("Poisson Solver", color=COLORS["subheader"])
         themed_texts("Poisson Solver", "subheader")
         dpg.add_combo(
             items=Poisson_SOLVER_METHODS,
@@ -161,17 +139,12 @@ def _create_poisson_solver_method_section():
             width=PARAMETER_INPUT_WIDTH + 25,
         )
     with dpg.tooltip("poisson_solver_method_group"):
-        # dpg.add_text("Select the solver type for the Poisson equation",
-                    #  color=COLORS["info"])
         themed_texts("Select the solver type for the Poisson equation",
                      "info")
         
         dpg.add_separator()
         themed_texts("Multigrid: efficient for large problems.","info")
         themed_texts("Direct: faster for smaller meshes.","info")
-        # dpg.add_text("Multigrid: efficient for large problems.")
-        # dpg.add_text("Direct: faster for smaller meshes.")
-
 
 def _create_flow_parameters_section():
     for pname, pval in BASE_PARAMETERS.items():
@@ -209,18 +182,13 @@ def _create_multigrid_section():
     with dpg.tooltip("multigrid_toggle"):
         themed_texts("Enable multigrid solver with multiple mesh levels",
                      "info")
-        # dpg.add_text("Enable multigrid solver with multiple mesh levels",
-        #              color=COLORS["info"])
         dpg.add_separator()
         themed_texts("Provide mesh files finest -> coarsest.","info")
         themed_texts("Number of files must match the mesh levels specified below.","info")
-        # dpg.add_text("Provide mesh files finest -> coarsest.")
-        # dpg.add_text("Number of files must match the mesh levels specified below.")
 
     with dpg.group(horizontal=False, tag="multigrid_parameters_section", show=False):
         dpg.add_spacer(height=4)
         themed_texts("Multigrid Parameters","subheader")
-        # dpg.add_text("Multigrid Parameters", color=COLORS["subheader"])
         for pname, pval in MULTIGRID_PARAMETERS.items():
             dpg.add_input_text(
                 label=pname,
@@ -243,16 +211,8 @@ def _create_multigrid_section():
 
 
 def _create_geometry_section(themes: dict):
-    # dpg.add_text(
-    #     "Create geometry in Gmsh, use a .geo file, or browse for an existing .msh file",
-    #     color=COLORS["success"],
-    #     wrap=LEFT_PANEL_WIDTH - 36   # slightly narrower due to indent
-    # )
-    themed_texts(
-        "Create geometry in Gmsh, use a .geo file, or browse for an existing .msh file",
-        "success",
-        wrap=LEFT_PANEL_WIDTH - 36   # slightly narrower due to indent
-    )
+    themed_texts("Create geometry in Gmsh, use a .geo file, or browse for an existing .msh file",
+        "success", wrap=LEFT_PANEL_WIDTH - 36)
     dpg.add_spacer(height=4)
 
     with dpg.group(horizontal=True):
@@ -273,12 +233,6 @@ def _create_geometry_section(themes: dict):
         themed_texts("1. Name boundaries for correct BC association", "info")
         themed_texts("2. Save mesh as .msh (ASCII v2)", "info")
         themed_texts("3. Load the .msh file below", "info")
-        # dpg.add_text("Open the Gmsh GUI for geometry creation", color=COLORS["info"])
-        # dpg.add_separator()
-        # dpg.add_text("1. Name boundaries for correct BC association")
-        # dpg.add_text("2. Save mesh as .msh (ASCII v2)")
-        # dpg.add_text("3. Load the .msh file below")
-
 
     with dpg.tooltip(open_geo_btn):
         themed_texts("Select a .geo file to generate the mesh from", "info")
@@ -286,11 +240,6 @@ def _create_geometry_section(themes: dict):
         themed_texts("1. Name boundaries for correct BC association", "info")
         themed_texts("2. Save and select the .geo file here", "info")
         themed_texts("3. Mesh is generated and loaded automatically", "info")
-        # dpg.add_text("Select a .geo file to generate the mesh from", color=COLORS["info"])
-        # dpg.add_separator()
-        # dpg.add_text("1. Name boundaries for correct BC association")
-        # dpg.add_text("2. Save and select the .geo file here")
-        # dpg.add_text("3. Mesh is generated and loaded automatically")
 
     if "button_secondary" in themes:
         dpg.bind_item_theme(new_geo_btn, themes["button_secondary"])
@@ -313,8 +262,6 @@ def _create_mesh_files_section(themes: dict):
     with dpg.group(tag="multigrid_mesh_section"):
         themed_texts("Mesh files  (finest to coarsest)",
                      "success", tag="multigrid_hint_text", show=False)
-        # dpg.add_text("Mesh files  (finest to coarsest)",
-        #              color=COLORS["success"], tag="multigrid_hint_text", show=False)
         dpg.add_spacer(height=3)
 
         for i in range(MAX_MESH_LEVELS):
@@ -357,8 +304,6 @@ def _create_mesh_files_section(themes: dict):
         width=270
     )
     with dpg.tooltip(associate_bc_btn):
-        # dpg.add_text("Open the boundary condition association window",
-        #              color=COLORS["info"])
         themed_texts("Open the boundary condition association window",
                      "info")
     if "button_secondary" in themes:
@@ -376,10 +321,6 @@ def _create_init_file_section():
                      "info")
         dpg.add_separator()
         themed_texts("See 'init.c' in the repository for a template.", "info")
-        # dpg.add_text("Provide a .c file defining custom initial conditions",
-        #              color=COLORS["info"])
-        # dpg.add_separator()
-        # dpg.add_text("See 'init.c' in the repository for a template.")
 
     with dpg.group(horizontal=True, show=False, tag="init_group"):
         dpg.add_input_text(hint="Path to initialisation file", tag="init_path",
@@ -408,10 +349,6 @@ def _create_restart_file_section():
                      "info")
         dpg.add_separator()
         themed_texts("Must use the same mesh file as the original run.", "info")
-        # dpg.add_text("Provide a .csv restart file from a previous run",
-        #              color=COLORS["info"])
-        # dpg.add_separator()
-        # dpg.add_text("Must use the same mesh file as the original run.")
 
     with dpg.group(horizontal=True, show=False, tag="restart_group"):
         dpg.add_input_text(hint="Path to restart file", tag="restart_path",
@@ -445,20 +382,7 @@ def _create_run_button(themes: dict):
         themed_texts("1. Writes configuration files", "info")
         themed_texts("2. Compiles C sources with gcc", "info")
         themed_texts("3. Runs the solver executable", "info")
-        # dpg.add_text("Compile and execute the solver", color=COLORS["info"])
-        # dpg.add_separator()
-        # dpg.add_text("1. Writes configuration files")
-        # dpg.add_text("2. Compiles C sources with gcc")
-        # dpg.add_text("3. Runs the solver executable")
 
     if "button" in themes:
         dpg.bind_item_theme(run_btn, themes["button"])
 
-
-# ── Callbacks ──────────────────────────────────────────────────────────────────
-
-def show_restart_callback(sender, app_data, user_data):
-    dpg.configure_item("restart_group", show=app_data)
-
-def show_init_callback(sender, app_data, user_data):
-    dpg.configure_item("init_group", show=app_data)

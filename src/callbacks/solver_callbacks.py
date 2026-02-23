@@ -83,70 +83,6 @@ def run_solver_callback(sender, app_data, user_data):
     if not success:
         logger.error("Failed to start solver")
 
-# def run_solver_callback_gpu(sender, app_data, user_data):
-#     """
-#     Main callback to compile and run the solver
-    
-#     Args:
-#         sender: Button tag that triggered the callback
-#         app_data: Application data (unused)
-#         user_data: User data (unused)
-#     """
-#     logger.header("Starting New Solver Run")
-#     init_on = dpg.get_value("init_toggle")
-
-#     # Check if already running
-#     if solver_runner.is_solver_running():
-#         logger.warning("Solver is already running. Please wait for completion.")
-#         return
-    
-#     # Get initialization file path
-#     if not dpg.does_item_exist("init_path") and init_on:
-#         logger.error("Initialization file path widget not found")
-#         return
-    
-#     init_file = dpg.get_value("init_path")
-    
-#     if not init_file and init_on:
-#         logger.error("No initialization file specified")
-#         logger.info("Please select an initialization file using the Browse button")
-#         return
-    
-#     # Write configuration files
-#     logger.info("Writing configuration files...")
-    
-#     grid_success = write_grid_csv()
-#     if not grid_success:
-#         logger.error("Failed to write grid configuration. Cannot continue.")
-#         return
-    
-#     params_success = write_parameters_csv()
-#     if not params_success:
-#         logger.error("Failed to write parameters. Cannot continue.")
-#         return
-    
-#     logger.success("Configuration files written successfully")
-    
-#     # Check dependencies
-#     deps_ok, missing = solver_runner.check_dependencies()
-#     if not deps_ok:
-#         logger.error("Missing required dependencies:")
-#         for item in missing:
-#             logger.error(f"  - {item}")
-#         return
-    
-#     # Start compilation and execution
-#     success = solver_runner.compile_and_run(
-#         init_file=init_file,
-#         compiler = "nvc",
-#         button_tag=sender,
-#         on_complete=on_solver_complete
-#     )
-    
-#     if not success:
-#         logger.error("Failed to start solver")
-
-
 def on_solver_complete(returncode: int):
     """
     Callback when solver completes
@@ -337,3 +273,9 @@ def validate_all_parameters_callback(sender, app_data, user_data):
             logger.warning(f"  - {msg}")
     else:
         logger.success("All parameters are valid")
+
+def show_restart_callback(sender, app_data, user_data):
+    dpg.configure_item("restart_group", show=app_data)
+
+def show_init_callback(sender, app_data, user_data):
+    dpg.configure_item("init_group", show=app_data)
