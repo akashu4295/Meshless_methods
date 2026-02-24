@@ -1,5 +1,3 @@
-bottom,wall,u=0.0,v=0.0,w=0.0
-outlet,pressure_outlet,p=0.0
-top,wall,u=0.0,v=0.0,w=0.0
+innerwall,wall,v_n=0.0,v_t=1.0
+outerwall,wall,v_n=0.0,v_t=0.0
 fluid,interior
-inlet,velocity_inlet,u=1.0,v=0.0,w=0.0

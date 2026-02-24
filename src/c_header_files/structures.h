@@ -31,6 +31,7 @@ typedef enum {
 typedef struct {
     BCType type;
     double u, v, w;
+    double v_n, v_t;
     double p, T, rho;
     double p_total, T_total;
 } BCValue;

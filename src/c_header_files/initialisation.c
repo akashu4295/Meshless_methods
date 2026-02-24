@@ -119,7 +119,7 @@ void read_boundary_conditions_file(char* bcfile, PointStructure* ps){
 
         BCValue bc;
         bc.type = BC_INTERIOR;
-        bc.u = 0.0; bc.v = 0.0; bc.w = 0.0; bc.p = 0.0; 
+        bc.u = 0.0; bc.v = 0.0; bc.w = 0.0; bc.p = 0.0; bc.v_n = 0; bc.v_t = 0;
         if (parameters.compressible_flow){
             bc.p_total = parameters.p_ref;
             bc.rho = parameters.rho_ref;
@@ -159,7 +159,7 @@ void read_boundary_conditions_file(char* bcfile, PointStructure* ps){
             continue;
         }
 
-        int have_u = 0, have_v = 0, have_w = 0, have_p = 0;
+        int have_u = 0, have_v = 0, have_w = 0, have_p = 0, have_vn = 0, have_vt = 0;
         int have_T = 0, have_rho = 0, have_p_total = 0, have_T_total = 0;
 
         /* parse key=value pairs */
@@ -183,6 +183,12 @@ void read_boundary_conditions_file(char* bcfile, PointStructure* ps){
             }
             else if (!strcmp(key, "w")) {
                 bc.w = atof(val); have_w = 1;
+            }
+            else if (!strcmp(key, "v_n")) {
+                bc.v_n = atof(val); have_vn = 1;
+            }
+            else if (!strcmp(key, "v_t")) {
+                bc.v_t = atof(val); have_vt = 1;
             }
             else if (!strcmp(key, "p")) {
                 bc.p = atof(val); have_p = 1;
@@ -209,9 +215,10 @@ void read_boundary_conditions_file(char* bcfile, PointStructure* ps){
         if ((bc.type == BC_VELOCITY_INLET ||
              bc.type == BC_VELOCITY_OUTLET ||
              bc.type == BC_WALL) &&
-            !(have_u && have_v && have_w))
+            (!(have_u && have_v && have_w) &&
+            !(have_vn && have_vt)))
         {
-            printf("BC CSV error (line %d): velocity BC requires u,v,w\n", lineno);
+            printf("BC CSV error (line %d): velocity BC requires u,v,w or v_n,v_t\n", lineno);
             continue;
         }
 
@@ -279,6 +286,12 @@ void assign_node_bc(PointStructure* ps, int node, BCValue new_bc){
     if (bc_priority(new_bc.type) > bc_priority(ps->node_bc[node].type)) 
         ps->node_bc[node] = new_bc;
 }
+static void decompose_velocity(double v_n, double v_t, double nx, double ny,
+                                double* u_out, double* v_out)
+{
+    *u_out = v_n * nx - v_t * ny;
+    *v_out = v_n * ny + v_t * nx;
+}
 
 void apply_boundary_conditions(PointStructure* myPointStruct, FieldVariables* field, int numlevels){
     for (int ii = 0; ii < numlevels; ii++)
@@ -293,96 +306,164 @@ void apply_boundary_conditions(PointStructure* myPointStruct, FieldVariables* fi
             {
                 case BC_VELOCITY_INLET:
                 case BC_VELOCITY_OUTLET:
-                    field[ii].u[i] = myPointStruct[ii].node_bc[i].u;
-                    field[ii].v[i] = myPointStruct[ii].node_bc[i].v;
-                    if (parameters.dimension == 3)
-                        field[ii].w[i] = myPointStruct[ii].node_bc[i].w;
-                    
-                    // For compressible flow
-                    if (parameters.compressible_flow) {
-                        field[ii].T[i] = myPointStruct[ii].node_bc[i].T;
-                        field[ii].rho[i] = myPointStruct[ii].node_bc[i].rho;
-                        field[ii].p[i] = myPointStruct[ii].node_bc[i].p;
-                    }
-                    break;
+                {
+                    double vn = myPointStruct[ii].node_bc[i].v_n;
+                    double vt = myPointStruct[ii].node_bc[i].v_t;
 
-                case BC_PRESSURE_OUTLET:
-                    field[ii].p[i] = myPointStruct[ii].node_bc[i].p;
-                    myPointStruct[ii].flag_outlets = true;
-                    
-                    // For compressible flow - extrapolate other variables
-                    // (will be handled in solver)
-                    break;
-
-                case BC_WALL:
-                    field[ii].u[i] = 0.0;
-                    field[ii].v[i] = 0.0;
-                    if (parameters.dimension == 3)
-                        field[ii].w[i] = 0.0;
-                    
-                    // Temperature depends on wall type for compressible
-                    // Will be handled by isothermal/adiabatic specific cases
-                    break;
-                
-                case BC_ISOTHERMAL_WALL:
-                    // No-slip + fixed temperature
-                    field[ii].u[i] = 0.0;
-                    field[ii].v[i] = 0.0;
-                    if (parameters.dimension == 3)
-                        field[ii].w[i] = 0.0;
-                    
-                    if (parameters.compressible_flow) {
-                        field[ii].T[i] = myPointStruct[ii].node_bc[i].T;
-                        // Density from ideal gas law
-                        field[ii].rho[i] = parameters.p_ref / 
-                            (parameters.R_gas * field[ii].T[i]);
+                    if (vn != 0.0 || vt != 0.0)
+                    {
+                        double nx = myPointStruct[ii].x_normal[i];
+                        double ny = myPointStruct[ii].y_normal[i];
+                        decompose_velocity(vn, vt, nx, ny,
+                                           &field[ii].u[i], &field[ii].v[i]);
+                        if (parameters.dimension == 3)
+                            field[ii].w[i] = 0.0;
                     }
-                    break;
-                
-                case BC_ADIABATIC_WALL:
-                    // No-slip + zero heat flux (∂T/∂n = 0)
-                    field[ii].u[i] = 0.0;
-                    field[ii].v[i] = 0.0;
-                    if (parameters.dimension == 3)
-                        field[ii].w[i] = 0.0;
-                    
-                    // Temperature gradient will be enforced in solver
-                    // Keep current temperature value
-                    break;
-                
-                case BC_SYMMETRY:
-                    // Zero normal velocity and gradients
-                    // Will be handled in solver with normal vector
-                    break;
-                
-                case BC_SUPERSONIC_INLET:
-                    // All variables specified
-                    if (parameters.compressible_flow) {
+                    else
+                    {
                         field[ii].u[i] = myPointStruct[ii].node_bc[i].u;
                         field[ii].v[i] = myPointStruct[ii].node_bc[i].v;
                         if (parameters.dimension == 3)
                             field[ii].w[i] = myPointStruct[ii].node_bc[i].w;
-                        field[ii].p[i] = myPointStruct[ii].node_bc[i].p;
-                        field[ii].T[i] = myPointStruct[ii].node_bc[i].T;
+                    }
+
+                    if (parameters.compressible_flow) {
+                        field[ii].T[i]   = myPointStruct[ii].node_bc[i].T;
+                        field[ii].rho[i] = myPointStruct[ii].node_bc[i].rho;
+                        field[ii].p[i]   = myPointStruct[ii].node_bc[i].p;
+                    }
+                    break;
+                }
+
+                case BC_WALL:
+                {
+                    double vn = myPointStruct[ii].node_bc[i].v_n;
+                    double vt = myPointStruct[ii].node_bc[i].v_t;
+
+                    if (vn != 0.0 || vt != 0.0)
+                    {
+                        double nx = myPointStruct[ii].x_normal[i];
+                        double ny = myPointStruct[ii].y_normal[i];
+                        decompose_velocity(vn, vt, nx, ny,
+                                           &field[ii].u[i], &field[ii].v[i]);
+                        if (parameters.dimension == 3)
+                            field[ii].w[i] = 0.0;
+                    }
+                    else
+                    {
+                        /* Stationary no-slip wall */
+                        field[ii].u[i] = 0.0;
+                        field[ii].v[i] = 0.0;
+                        if (parameters.dimension == 3)
+                            field[ii].w[i] = 0.0;
+                    }
+                    break;
+                }
+
+                case BC_ISOTHERMAL_WALL:
+                {
+                    double vn = myPointStruct[ii].node_bc[i].v_n;
+                    double vt = myPointStruct[ii].node_bc[i].v_t;
+
+                    if (vn != 0.0 || vt != 0.0)
+                    {
+                        double nx = myPointStruct[ii].x_normal[i];
+                        double ny = myPointStruct[ii].y_normal[i];
+                        decompose_velocity(vn, vt, nx, ny,
+                                           &field[ii].u[i], &field[ii].v[i]);
+                        if (parameters.dimension == 3)
+                            field[ii].w[i] = 0.0;
+                    }
+                    else
+                    {
+                        field[ii].u[i] = 0.0;
+                        field[ii].v[i] = 0.0;
+                        if (parameters.dimension == 3)
+                            field[ii].w[i] = 0.0;
+                    }
+
+                    if (parameters.compressible_flow) {
+                        field[ii].T[i]   = myPointStruct[ii].node_bc[i].T;
+                        field[ii].rho[i] = parameters.p_ref /
+                            (parameters.R_gas * field[ii].T[i]);
+                    }
+                    break;
+                }
+
+                case BC_ADIABATIC_WALL:
+                {
+                    double vn = myPointStruct[ii].node_bc[i].v_n;
+                    double vt = myPointStruct[ii].node_bc[i].v_t;
+
+                    if (vn != 0.0 || vt != 0.0)
+                    {
+                        double nx = myPointStruct[ii].x_normal[i];
+                        double ny = myPointStruct[ii].y_normal[i];
+                        decompose_velocity(vn, vt, nx, ny,
+                                           &field[ii].u[i], &field[ii].v[i]);
+                        if (parameters.dimension == 3)
+                            field[ii].w[i] = 0.0;
+                    }
+                    else
+                    {
+                        field[ii].u[i] = 0.0;
+                        field[ii].v[i] = 0.0;
+                        if (parameters.dimension == 3)
+                            field[ii].w[i] = 0.0;
+                    }
+                    /* Temperature gradient enforced in solver (∂T/∂n = 0) */
+                    break;
+                }
+
+                case BC_PRESSURE_OUTLET:
+                    field[ii].p[i] = myPointStruct[ii].node_bc[i].p;
+                    myPointStruct[ii].flag_outlets = true;
+                    break;
+
+                case BC_SYMMETRY:
+                    /* Zero normal velocity and gradients handled in solver */
+                    break;
+
+                case BC_SUPERSONIC_INLET:
+                    if (parameters.compressible_flow) {
+                        double vn = myPointStruct[ii].node_bc[i].v_n;
+                        double vt = myPointStruct[ii].node_bc[i].v_t;
+
+                        if (vn != 0.0 || vt != 0.0)
+                        {
+                            double nx = myPointStruct[ii].x_normal[i];
+                            double ny = myPointStruct[ii].y_normal[i];
+                            decompose_velocity(vn, vt, nx, ny,
+                                               &field[ii].u[i], &field[ii].v[i]);
+                            if (parameters.dimension == 3)
+                                field[ii].w[i] = 0.0;
+                        }
+                        else
+                        {
+                            field[ii].u[i] = myPointStruct[ii].node_bc[i].u;
+                            field[ii].v[i] = myPointStruct[ii].node_bc[i].v;
+                            if (parameters.dimension == 3)
+                                field[ii].w[i] = myPointStruct[ii].node_bc[i].w;
+                        }
+
+                        field[ii].p[i]   = myPointStruct[ii].node_bc[i].p;
+                        field[ii].T[i]   = myPointStruct[ii].node_bc[i].T;
                         field[ii].rho[i] = myPointStruct[ii].node_bc[i].rho;
                     }
                     break;
-                
+
                 case BC_SUPERSONIC_OUTLET:
-                    // All variables extrapolated (handled in solver)
+                    /* All variables extrapolated, handled in solver */
                     break;
-                
+
                 case BC_SUBSONIC_INLET:
-                    // Specify total pressure, total temperature, direction
-                    // (handled in solver with Riemann invariants)
                     if (parameters.compressible_flow) {
                         field[ii].T[i] = myPointStruct[ii].node_bc[i].T_total;
                         field[ii].p[i] = myPointStruct[ii].node_bc[i].p_total;
                     }
                     break;
-                
+
                 case BC_SUBSONIC_OUTLET:
-                    // Specify static pressure, extrapolate others
                     if (parameters.compressible_flow) {
                         field[ii].p[i] = myPointStruct[ii].node_bc[i].p;
                     }
@@ -394,12 +475,12 @@ void apply_boundary_conditions(PointStructure* myPointStruct, FieldVariables* fi
                     if (parameters.dimension == 3)
                         field[ii].w[i] = 0.0;
                     field[ii].p[i] = 0.0;
-                    
+
                     if (parameters.compressible_flow) {
-                        field[ii].T[i] = parameters.T_ref;
+                        field[ii].T[i]   = parameters.T_ref;
                         field[ii].rho[i] = parameters.rho_ref;
                     }
-                    
+
                     printf("Applying default BC at node %d: u=v=w=p=0.0\n", i);
                     break;
             }

@@ -1,297 +1,3 @@
-# """
-# Menu bar callbacks for MeMPhyS GUI
-
-# Handles callbacks for:
-# - File menu (open, save, exit)
-# - Edit menu (preferences)
-# - Help menu (help, about)
-# """
-
-# import dearpygui.dearpygui as dpg
-
-# from src.core import logger, app_state
-# from src.utils import open_folder, open_url, change_font, get_platform
-# from src.config import (
-#     LOG_DIR,
-#     HELP_URL,
-#     APP_FULL_NAME,
-#     APP_SUBTITLE,
-#     DEVELOPERS,
-#     FONT_SIZES,
-#     FONT_PREFERENCES,
-#     COLORS,
-#     BC_TYPES,
-#     BC_VARIABLES,
-#     BC_WINDOW_WIDTH,
-#     BC_WINDOW_HEIGHT,
-# )
-
-# from src.utils.gmsh_bc_manager import (
-#     get_physical_names,
-#     get_boundary_condition,
-#     set_boundary_condition,
-# )
-
-
-# def show_bc_window_callback(sender, app_data, user_data):
-#     """
-#     Show the Boundary Conditions dialog
-    
-#     Args:
-#         sender: button tag
-#         app_data: Application data (unused)
-#         user_data: User data (unused)
-#     """
-#     # If window already exists, just show it
-#     if dpg.does_item_exist("bc_window"):
-#         dpg.configure_item("bc_window", show=True)
-#         dpg.focus_item("bc_window")
-#         return
-    
-#     # Get current font settings
-#     current_font_name = app_state.current_font_name
-#     current_font_size = app_state.current_font_size
-    
-#     # Get available fonts for current platform
-#     platform = get_platform()
-#     available_fonts = FONT_PREFERENCES.get(platform, [])
-    
-#     # Create Preferences window
-#     with dpg.window(
-#         label="Boundary Conditions",
-#         tag="bc_window",
-#         modal=True,
-#         width=BC_WINDOW_WIDTH,
-#         height=BC_WINDOW_HEIGHT,
-#         no_resize=True,
-#         pos=(415, 275)
-#     ):
-#         dpg.add_text("Boundary Conditions", color=(200, 220, 255))
-#         dpg.add_separator()
-        
-
-#         # Instructions
-#         dpg.add_text(
-#             "Load a mesh file to configure boundary conditions",
-#             tag="bc_dialog_instructions",
-#             color=COLORS["info"]
-#         )
-        
-#         # Container for BC widgets (will be populated when mesh is loaded)
-#         with dpg.group(tag="bc_widgets_dialog_container"):
-#             pass
-        
-#         dpg.add_spacer(height=10)
-        
-#         # Buttons
-#         with dpg.group(horizontal=True):
-#             refresh_btn = dpg.add_button(
-#                 label="Read from Mesh",
-#                 callback=lambda: refresh_bc_callback(),
-#                 tag="refresh_bc_dialog_button"
-#             )
-            
-#             load_btn = dpg.add_button(
-#                 label="Load bc.csv",
-#                 callback=lambda: load_bc_csv_dialog_callback(),
-#                 tag="load_bc_dialog_button"
-#             )
-    
-
-#         # Buttons
-#         with dpg.group(horizontal=True):
-#             dpg.add_button(
-#                 label="Apply",
-#                 width=80,
-#                 callback=apply_bc_callback
-#             )
-            
-#             dpg.add_button(
-#                 label="Close",
-#                 width=80,
-#                 callback=lambda: dpg.configure_item("bc_window", show=False)
-#             )
-
-# def apply_bc_callback(sender, app_data, user_data):
-#     """
-#     Apply boundary condition changes
-    
-#     Args:
-#         sender: Button tag
-#         app_data: Application data (unused)
-#         user_data: User data (unused)
-#     """    
-#     from src.core import logger
-#     from src.utils.gmsh_bc_manager import write_bc_csv, validate_bc_assignment
-    
-#     # Update all BCs from widgets first
-#     physical_names = get_physical_names()
-#     for name in physical_names:
-#         update_bc_from_widgets_dialog(name)
-    
-#     # Validate
-#     all_assigned, missing = validate_bc_assignment()
-    
-#     if not all_assigned:
-#         logger.warning(f"Not all physical names have BCs assigned. Missing: {', '.join(missing)}")
-#         logger.info("Writing bc.csv anyway with assigned BCs only")
-    
-#     # Write
-#     success = write_bc_csv()
-    
-#     if success:
-#         logger.success("Boundary conditions saved to bc.csv")
-
-# def refresh_bc_callback():
-#     """
-#     Refresh the BC panel with physical names from loaded mesh
-#     """
-#     from src.core import logger
-#     from src.utils.gmsh_bc_manager import read_physical_names_from_msh
-#     import dearpygui.dearpygui as dpg
-    
-#     # Get current mesh file
-#     mesh_file = None
-#     if dpg.does_item_exist("mesh_file_1"):
-#         mesh_file = dpg.get_value("mesh_file_1")
-    
-#     if not mesh_file:
-#         logger.warning("No mesh file selected. Please select a mesh file first.")
-#         return
-    
-#     # Read physical names
-#     physical_names = read_physical_names_from_msh(mesh_file)
-    
-#     if not physical_names:
-#         logger.warning("No physical names found in mesh file")
-#         return
-    
-#     # Clear existing widgets
-#     if dpg.does_item_exist("bc_widgets_dialog_container"):
-#         dpg.delete_item("bc_widgets_dialog_container", children_only=True)
-    
-#     # Update instructions
-#     if dpg.does_item_exist("bc_dialog_instructions"):
-#         dpg.set_value("bc_dialog_instructions", f"Configure boundary conditions for {len(physical_names)} physical entities:")
-    
-#     # Create BC widgets for each physical name
-#     with dpg.group(parent="bc_widgets_dialog_container"):
-#         for physical_name in physical_names:
-#             create_bc_widget(physical_name)
-
-# def load_bc_csv_dialog_callback():
-#     """Load boundary conditions from bc.csv"""
-#     from src.core import logger
-#     from src.utils.gmsh_bc_manager import read_bc_csv
-    
-#     success = read_bc_csv()
-    
-#     if success:
-#         logger.success("Boundary conditions loaded from bc.csv")
-#         # Refresh panel to show loaded BCs
-#         refresh_bc_callback()
-#     else:
-#         logger.warning("Could not load bc.csv")
-
-# def update_bc_from_widgets_dialog(physical_name: str):
-#     """
-#     Update boundary condition from widget values
-    
-#     Args:
-#         physical_name: Name of physical entity
-#     """
-#     # Get BC type
-#     combo_tag = f"bc_type_{physical_name}"
-#     if not dpg.does_item_exist(combo_tag):
-#         return
-    
-#     bc_type = dpg.get_value(combo_tag)
-    
-#     # Get variable values
-#     variables = {}
-#     for var_name in BC_VARIABLES.get(bc_type, []):
-#         var_tag = f"bc_var_{physical_name}_{var_name}"
-#         if dpg.does_item_exist(var_tag):
-#             variables[var_name] = dpg.get_value(var_tag)
-    
-#     # Set BC
-#     set_boundary_condition(physical_name, bc_type, variables)
-
-# def create_bc_widget(physical_name: str):
-#     """
-#     Create widgets for configuring BC for one physical entity
-    
-#     Args:
-#         physical_name: Name of the physical entity
-#     """
-#     # Get existing BC if any
-#     bc_data = get_boundary_condition(physical_name)
-#     default_type = bc_data['type'] if bc_data else BC_TYPES[0]
-#     default_vars = bc_data['variables'] if bc_data else {}
-    
-#     with dpg.group(horizontal=True):
-#         # Physical name label
-#         dpg.add_text(f"{physical_name}:", color=COLORS["subheader"])
-        
-#         # BC type combo
-#         combo_tag = f"bc_type_{physical_name}"
-#         dpg.add_combo(
-#             items=BC_TYPES,
-#             default_value=default_type,
-#             tag=combo_tag,
-#             width=150,
-#             callback=lambda s, a, u: on_bc_type_changed_dialog(physical_name, a)
-#         )
-        
-#         # Variable inputs container
-#         vars_container_tag = f"bc_vars_{physical_name}"
-#         with dpg.group(horizontal=True, tag=vars_container_tag):
-#             create_variable_inputs(physical_name, default_type, default_vars)
-
-# def create_variable_inputs(physical_name: str, bc_type: str, current_values: dict):
-#     """
-#     Create input fields for variables based on BC type
-    
-#     Args:
-#         physical_name: Name of physical entity
-#         bc_type: Type of boundary condition
-#         current_values: Current variable values
-#     """
-#     variables = BC_VARIABLES.get(bc_type, [])
-    
-#     for var_name in variables:
-#         default_val = current_values.get(var_name, 0.0)
-        
-#         dpg.add_text(f"{var_name}=")
-#         dpg.add_input_float(
-#             default_value=default_val,
-#             width=80,
-#             tag=f"bc_var_{physical_name}_{var_name}",
-#             format="%.2f",
-#             on_enter=True,
-#             callback=lambda s, a, u: update_bc_from_widgets_dialog(physical_name)
-#         )
-
-# def on_bc_type_changed_dialog(physical_name: str, new_type: str):
-#     """
-#     Callback when BC type is changed
-    
-#     Args:
-#         physical_name: Name of physical entity
-#         new_type: New BC type
-#     """
-#     # Clear and recreate variable inputs
-#     vars_container_tag = f"bc_vars_{physical_name}"
-    
-#     if dpg.does_item_exist(vars_container_tag):
-#         dpg.delete_item(vars_container_tag, children_only=True)
-        
-#         with dpg.group(horizontal=True, parent=vars_container_tag):
-#             create_variable_inputs(physical_name, new_type, {})
-    
-#     # Update BC in memory
-#     update_bc_from_widgets_dialog(physical_name)
-
 """
 Menu bar callbacks for MeMPhyS GUI
 
@@ -389,12 +95,7 @@ def show_bc_window_callback(sender, app_data, user_data):
         no_resize=True,
         pos=(415, 275),
     ):
-        # ── Header ────────────────────────────────────────────────────────
-        # dpg.add_text("Boundary Conditions", color=COLORS.get("header", (200, 220, 255)))
-        # dpg.add_separator()
         dpg.add_spacer(height=4)
-
-        # ── Status / instruction line ──────────────────────────────────────
         dpg.add_text(
             "Reading boundary conditions from mesh...",
             tag="bc_dialog_instructions",
@@ -404,7 +105,6 @@ def show_bc_window_callback(sender, app_data, user_data):
         dpg.add_separator()
         dpg.add_spacer(height=3)
 
-        # ── Column header row ──────────────────────────────────────────────
         with dpg.group(horizontal=True, tag="bc_column_headers"):
             dpg.add_text("Entity",        color=COLORS["subheader"], indent=4)
             dpg.add_spacer(width=_COL_NAME_W - 46)
@@ -417,7 +117,6 @@ def show_bc_window_callback(sender, app_data, user_data):
         dpg.add_separator()
         dpg.add_spacer(height=2)
 
-        # ── Scrollable BC rows container ───────────────────────────────────
         with dpg.child_window(
             tag="bc_widgets_dialog_container",
             height=BC_WINDOW_HEIGHT - 185,
@@ -430,14 +129,12 @@ def show_bc_window_callback(sender, app_data, user_data):
         dpg.add_separator()
         dpg.add_spacer(height=3)
 
-        # ── Action buttons ─────────────────────────────────────────────────
         with dpg.group(horizontal=True):
             dpg.add_button(
                 label="Load bc.csv",
                 tag="load_bc_dialog_button",
                 callback=lambda: load_bc_csv_dialog_callback(),
             )
-            # Push Apply / Close to the right
             dpg.add_spacer(width=BC_WINDOW_WIDTH - 320)
             dpg.add_button(
                 label="Apply",
@@ -451,13 +148,7 @@ def show_bc_window_callback(sender, app_data, user_data):
                 callback=lambda: dpg.configure_item("bc_window", show=False),
             )
 
-    # Auto-populate rows from mesh immediately after window is built
     refresh_bc_callback()
-
-
-# ---------------------------------------------------------------------------
-# BC row population
-# ---------------------------------------------------------------------------
 
 def refresh_bc_callback():
     """
@@ -484,7 +175,6 @@ def refresh_bc_callback():
         logger.warning("No physical names found in mesh file.")
         return
 
-    # Rebuild container contents
     if dpg.does_item_exist("bc_widgets_dialog_container"):
         dpg.delete_item("bc_widgets_dialog_container", children_only=True)
 
@@ -522,30 +212,28 @@ def create_bc_widget(physical_name: str):
     default_vel_mode = _infer_velocity_mode(default_vars)
 
     with dpg.group(horizontal=True, parent="bc_widgets_dialog_container"):
-
-        # ── Entity name (fixed-width column) ───────────────────────────────
         dpg.add_text(physical_name, color=COLORS["subheader"], indent=4)
         pad = max(4, _COL_NAME_W - len(physical_name) * 7 - 4)
         dpg.add_spacer(width=pad)
 
-        # ── BC type combo ──────────────────────────────────────────────────
         dpg.add_combo(
             items=BC_TYPES,
             default_value=default_type,
             tag=f"bc_type_{physical_name}",
             width=_COL_BCTYPE_W,
-            callback=lambda s, a, u=physical_name: _on_bc_type_changed(u, a),
+            user_data=physical_name,                                          # <-- pass here
+            callback=lambda s, a, u: _on_bc_type_changed(u, a),              # <-- u is user_data
         )
         dpg.add_spacer(width=6)
 
-        # ── Velocity mode combo (conditionally visible) ────────────────────
         dpg.add_combo(
             items=VELOCITY_INPUT_MODES,
             default_value=default_vel_mode,
             tag=f"bc_velmode_{physical_name}",
             width=_COL_VELMODE_W,
             show=has_vel,
-            callback=lambda s, a, u=physical_name: _on_velocity_mode_changed(u, a),
+            user_data=physical_name,                                          # <-- pass here
+            callback=lambda s, a, u: _on_velocity_mode_changed(u, a),        # <-- u is user_data
         )
         dpg.add_spacer(
             width=6,
@@ -553,14 +241,9 @@ def create_bc_widget(physical_name: str):
             show=has_vel,
         )
 
-        # ── Variable inputs container ──────────────────────────────────────
         with dpg.group(horizontal=True, tag=f"bc_vars_{physical_name}"):
             _create_variable_inputs(physical_name, default_type, default_vel_mode, default_vars)
 
-
-# ---------------------------------------------------------------------------
-# Variable inputs
-# ---------------------------------------------------------------------------
 
 def _create_variable_inputs(
     physical_name: str,
@@ -600,11 +283,6 @@ def _create_variable_inputs(
         )
         dpg.add_spacer(width=4)
 
-
-# ---------------------------------------------------------------------------
-# Change callbacks
-# ---------------------------------------------------------------------------
-
 def _on_bc_type_changed(physical_name: str, new_type: str):
     """
     Rebuild the velocity-mode combo visibility and variable inputs when the
@@ -630,7 +308,6 @@ def _on_bc_type_changed(physical_name: str, new_type: str):
     )
     _rebuild_variable_inputs(physical_name, new_type, vel_mode, current_values={})
     update_bc_from_widgets_dialog(physical_name)
-
 
 def _on_velocity_mode_changed(physical_name: str, new_mode: str):
     """
@@ -658,11 +335,6 @@ def _on_var_changed(physical_name: str, var_name: str, new_value: float):
         new_value:     Current float value from the widget.
     """
     update_bc_from_widgets_dialog(physical_name)
-
-
-# ---------------------------------------------------------------------------
-# Apply / load
-# ---------------------------------------------------------------------------
 
 def apply_bc_callback(sender, app_data, user_data):
     """
@@ -702,10 +374,6 @@ def load_bc_csv_dialog_callback():
         logger.warning("Could not load bc.csv")
 
 
-# ---------------------------------------------------------------------------
-# State sync helper
-# ---------------------------------------------------------------------------
-
 def update_bc_from_widgets_dialog(physical_name: str):
     """
     Read all widget values for *physical_name* and push them into the
@@ -734,10 +402,6 @@ def update_bc_from_widgets_dialog(physical_name: str):
 
     set_boundary_condition(physical_name, bc_type, variables)
 
-
-# ---------------------------------------------------------------------------
-# Private helpers
-# ---------------------------------------------------------------------------
 
 def _bc_type_has_velocity(bc_type: str) -> bool:
     """
@@ -799,6 +463,41 @@ def _infer_velocity_mode(stored_vars: dict) -> str:
         return "Normal + Tangential (n, t)"
     return VELOCITY_INPUT_MODES[0]
 
+def _create_variable_inputs(
+    physical_name: str,
+    bc_type: str,
+    velocity_mode: str,
+    current_values: dict,
+    parent: str | None = None,
+):
+    var_names = _resolve_variable_names(bc_type, velocity_mode)
+
+    # Only resolve to UUID when a parent is explicitly given
+    parent_id = dpg.get_alias_id(parent) if isinstance(parent, str) else parent
+
+    for var_name in var_names:
+        label       = VELOCITY_VAR_LABELS.get(var_name, var_name)
+        default_val = float(current_values.get(var_name, 0.0))
+
+        kwargs = {"parent": parent_id} if parent_id is not None else {}
+
+        dpg.add_text(f"{label}=", **kwargs)
+        dpg.add_input_float(
+            tag=f"bc_var_{physical_name}_{var_name}",
+            default_value=default_val,
+            width=_COL_VAR_INPUT_W,
+            format="%.3f",
+            step=0,
+            callback=lambda s, a, u=(physical_name, var_name): _on_var_changed(*u, a),
+            **kwargs,
+        )
+        dpg.add_spacer(width=4, **kwargs)
+        
+def _on_velocity_mode_changed(physical_name: str, new_mode: str):
+    bc_type = dpg.get_value(f"bc_type_{physical_name}")
+    _rebuild_variable_inputs(physical_name, bc_type, new_mode, current_values={})
+    update_bc_from_widgets_dialog(physical_name)
+
 
 def _rebuild_variable_inputs(
     physical_name: str,
@@ -806,16 +505,21 @@ def _rebuild_variable_inputs(
     velocity_mode: str,
     current_values: dict,
 ):
-    """
-    Clear and repopulate the ``bc_vars_<n>`` group with fresh inputs.
-
-    Args:
-        physical_name:  Physical entity name.
-        bc_type:        Currently selected BC type.
-        velocity_mode:  Currently selected velocity input mode.
-        current_values: Values to pre-fill (pass ``{}`` to reset to zero).
-    """
     container_tag = f"bc_vars_{physical_name}"
-    if dpg.does_item_exist(container_tag):
-        dpg.delete_item(container_tag, children_only=True)
-        _create_variable_inputs(physical_name, bc_type, velocity_mode, current_values)
+    if not dpg.does_item_exist(container_tag):
+        return
+
+    for mode_vars in VELOCITY_MODE_VARS.values():
+        for var_name in mode_vars:
+            tag = f"bc_var_{physical_name}_{var_name}"
+            if dpg.does_item_exist(tag):
+                print(f"[DEBUG] deleting tag: {tag}")
+                dpg.delete_item(tag)
+    for var_name in BC_VARIABLES.get(bc_type, []):
+        tag = f"bc_var_{physical_name}_{var_name}"
+        if dpg.does_item_exist(tag):
+            print(f"[DEBUG] deleting BC var tag: {tag}")
+            dpg.delete_item(tag)
+
+    dpg.delete_item(container_tag, children_only=True)
+    _create_variable_inputs(physical_name, bc_type, velocity_mode, current_values, parent=container_tag)
