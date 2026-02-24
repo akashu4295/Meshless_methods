@@ -8,7 +8,7 @@ This package handles solver compilation, execution, and monitoring:
 """
 
 from .runner import SolverRunner, solver_runner
-from .monitoring import ConvergenceMonitor, convergence_monitor
+from .monitoring import convergence_monitor, ConvergenceMonitor
 
 __all__ = [
     # Classes

@@ -154,7 +154,6 @@ def create_gui(themes: dict):
     logger.set_enable_gui(True)
     logger.info("GUI logging enabled")
     print("Step F: GUI creation complete")
-    
     return main_window
 
 
@@ -176,6 +175,7 @@ def start_background_services():
     # Start convergence monitor
     try:
         convergence_monitor.start()
+        # solver_monitor.attach()
         logger.success("Convergence monitor started")
     except Exception as e:
         logger.warning(f"Could not start convergence monitor: {e}")
@@ -252,6 +252,7 @@ def main():
         def delayed_start():
             try:
                 convergence_monitor.start()
+                
                 logger.success("Convergence monitor started")
             except Exception as e:
                 logger.warning(f"Could not start convergence monitor: {e}")

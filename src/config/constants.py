@@ -112,7 +112,7 @@ BASE_PARAMETERS = {
     "poisson_solver_tolerance": 1e-8,
     "sor_parameter": 0.5,
     "time_step": 0.1,
-    "num_time_steps": 100000,
+    "num_time_steps": 10,
     "write_interval": 50,
     "Re": 10,
 }
@@ -187,6 +187,10 @@ MESH_PATH_INPUT_WIDTH = 200
 VTK_PATH_INPUT_WIDTH = 150
 COMBO_WIDTH = 150
 SAVE_PATH_INPUT_WIDTH = 200
+
+# Boundary Conditions Panel dimension
+BC_WINDOW_WIDTH = 800
+BC_WINDOW_HEIGHT = 400
 
 # Button dimensions
 RUN_BUTTON_WIDTH = 250
@@ -275,18 +279,27 @@ FILE_DIALOG_HEIGHT = 400
 # Color Scheme (RGB values 0-255)
 # ============================================================
 
-COLORS = {
-    "header": (200, 220, 255),
-    # "subheader": (255, 220, 160),
+COLORS_DARK = {
+    "header":    (200, 220, 255),
     "subheader": (160, 185, 220),
-    "success": (200, 255, 200),
-    "warning": (255, 220, 100),
-    "error": (255, 100, 100),
-    "info": (220, 230, 255),
-    "menubar_bg": (28, 28, 32),
-    "menubar_text": (220, 220, 220),
+    "success":   (145, 210, 145),
+    "warning":   (255, 220, 100),
+    "error":     (255, 100, 100),
+    "info":      (220, 230, 255),
+    "label":     (220, 230, 255),
 }
 
+COLORS_LIGHT = {
+    "header":    (40,  80,  180),
+    "subheader": (60,  100, 160),
+    "success":   (30,  130, 30),
+    "warning":   (160, 110, 0),
+    "error":     (180, 30,  30),
+    "info":      (50,  80,  160),
+    "label":     (50,  80,  160),
+}
+
+COLORS = COLORS_DARK
 # ============================================================
 # Application Metadata
 # ============================================================

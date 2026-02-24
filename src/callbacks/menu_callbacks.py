@@ -20,6 +20,7 @@ from src.config import (
     FONT_SIZES,
     FONT_PREFERENCES,
 )
+from src.config import COLORS, COLORS_DARK, COLORS_LIGHT, _THEMED_TEXTS, themed_texts, update_themed_texts, toggle_theme
 
 
 def open_logs_callback(sender, app_data, user_data):
@@ -232,21 +233,47 @@ def show_options_callback(sender, app_data, user_data):
     create_options_dialog()
 
 
-def toggle_theme_callback(sender, app_data, user_data):
-    """
-    Toggle between dark and light themes
+# def toggle_theme_callback(sender, app_data, user_data):
+#     """
+#     Toggle between dark and light themes
     
-    Args:
-        sender: Menu item tag
-        app_data: Application data (unused)
-        user_data: User data (unused)
-    """
-    from src.config.themes import toggle_theme
+#     Args:
+#         sender: Menu item tag
+#         app_data: Application data (unused)
+#         user_data: User data (unused)
+#     """
+#     from src.config.themes import toggle_theme
     
-    # Get current theme state
+#     # Get current theme state
+#     current_dark = app_state.get_option("dark_theme", True)
+    
+#     # Toggle
+#     new_dark = toggle_theme(current_dark)
+    
+#     # Save new state
+#     app_state.set_option("dark_theme", new_dark)
+    
+#     theme_name = "Dark" if new_dark else "Light"
+#     logger.success(f"Switched to {theme_name} theme")
+#     logger.info("Theme preference will be saved on exit")
+
+
+def toggle_theme_callback():
+    # global _is_dark, COLORS
+    # _is_dark = not _is_dark
     current_dark = app_state.get_option("dark_theme", True)
     
-    # Toggle
+    new_palette = COLORS_DARK if current_dark else COLORS_LIGHT
+
+    # Update the live COLORS dict in-place so any future widgets use it
+    COLORS.update(new_palette)
+    update_themed_texts(new_palette)
+    # Re-color every tracked widget instantly
+    for tag, color_key in _THEMED_TEXTS.items():
+        if dpg.does_item_exist(tag):
+            dpg.configure_item(tag, color=new_palette[color_key])
+
+    # Swap the global DPG theme as before
     new_dark = toggle_theme(current_dark)
     
     # Save new state
@@ -444,3 +471,4 @@ def load_config_file_callback(sender, app_data, user_data):
         logger.info("UI updated with loaded configuration")
     else:
         logger.error(f"Failed to load configuration from {file_path}")
+

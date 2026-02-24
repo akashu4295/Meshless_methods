@@ -92,6 +92,7 @@ int main()
             {
                 steady_state_error = fractional_step_explicit_vectorised(myPointStruct, field);
                 printf("Time step: %d, Steady state error: %e\n", it, steady_state_error);
+                fflush(stdout);
                 fprintf(file2,"%d, %e\n", it, steady_state_error);
                 fflush(file2);
                 if (steady_state_error < parameters.steady_state_tolerance){
@@ -113,6 +114,7 @@ int main()
             {
                 steady_state_error = fractional_step_explicit_vectorised_2d(myPointStruct, field);
                 printf("Time step: %d, Steady state error: %e\n", it, steady_state_error);
+                fflush(stdout);
                 fprintf(file2,"%d, %e\n", it, steady_state_error);
                 fflush(file2);
                 if (steady_state_error < parameters.steady_state_tolerance){
@@ -135,6 +137,7 @@ int main()
             {
                 steady_state_error = time_implicit_solver_vectorised(myPointStruct, field);
                 printf("Time step: %d, Steady state error: %e\n", it, steady_state_error);
+                fflush(stdout);
                 fprintf(file2,"%d, %e\n", it, steady_state_error);
                 fflush(file2);
                 if (steady_state_error < parameters.steady_state_tolerance){
@@ -156,6 +159,7 @@ int main()
                 {
                     steady_state_error = time_implicit_solver_vectorised_2d(myPointStruct, field);
                     printf("Time step: %d, Steady state error: %e\n", it, steady_state_error);
+                    fflush(stdout);
                     fprintf(file2,"%d, %e\n", it, steady_state_error);
                     fflush(file2);
                     if (steady_state_error < parameters.steady_state_tolerance){

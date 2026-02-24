@@ -12,111 +12,165 @@ import os
 import sys
 import subprocess
 import dearpygui.dearpygui as dpg
+import sys
+import numpy as np
 
 from src.core import logger, app_state
 from src.solver import convergence_monitor
 from src.config import DEFAULT_VTK, DEFAULT_SAVE_PATH
 from src.utils import validate_file_path
 
-
 def update_plot_callback(sender, app_data, user_data):
     """
-    Update the contour plot with current settings
-    
-    Args:
-        sender: Button tag
-        app_data: Application data (unused)
-        user_data: User data (unused)
+    Update contour plot using a subprocess (no external plotter.py file)
     """
-    # Get plot settings
+    import os
+    import sys
+    import subprocess
+
     vtk_path = dpg.get_value("contour_vtk_path") or DEFAULT_VTK
     var_choice = dpg.get_value("contour_var") or "velocity magnitude"
     cmap = dpg.get_value("contour_cmap") or "viridis"
-    
-    # Get dimension from parameters
-    if dpg.does_item_exist("param_domain_dimensions"):
-        dimension = dpg.get_value("param_domain_dimensions")
-    else:
-        dimension = "2"
-    
-    # Check if VTK file exists in current directory
+
+    dimension = (
+        dpg.get_value("param_domain_dimensions")
+        if dpg.does_item_exist("param_domain_dimensions")
+        else "2"
+    )
+
     if not validate_file_path(vtk_path, must_exist=True):
-        # Try to find it in the output folder
         from src.utils.output_manager import get_latest_output_folder
+
         latest_folder = get_latest_output_folder()
-        
         if latest_folder:
-            # Try in latest output folder
             alt_path = os.path.join(latest_folder, os.path.basename(vtk_path))
             if os.path.exists(alt_path):
                 vtk_path = alt_path
                 logger.info(f"Using VTK file from output folder: {vtk_path}")
             else:
                 logger.error(f"VTK file not found: {os.path.basename(vtk_path)}")
-                logger.info("Please run the solver first or check the output folder")
                 return
         else:
             logger.error(f"VTK file not found: {vtk_path}")
-            logger.info("Please ensure the solver has run and generated output")
             return
-    
+
     logger.info(f"Plotting {var_choice} from {vtk_path}")
-    logger.info(f"Colormap: {cmap}, Dimension: {dimension}")
     
-    # Get path to plotter script
-    script_path = os.path.join("src", "plotter.py")
-    
-    if not os.path.exists(script_path):
-        logger.error(f"Plotter script not found: {script_path}")
-        return
-    
-    # Terminate existing plotter process if running
+    # Kill previous process
     if app_state.plotter_process is not None:
         try:
             if app_state.plotter_process.poll() is None:
                 app_state.plotter_process.terminate()
                 app_state.plotter_process.wait(timeout=2)
-                logger.info("Previous plotter window closed")
+                logger.info("Previous plotter closed")
         except Exception as e:
             logger.warning(f"Error closing previous plotter: {e}")
-    
-    # Launch new plotter process
+
+    plot_code = f"""
+import numpy as np
+import pyvista as pv
+from pyvistaqt import BackgroundPlotter
+import sys
+
+vtk_path = r\"{vtk_path}\"
+var_choice = r\"{var_choice}\"
+cmap = r\"{cmap}\"
+dimension = r\"{dimension}\"
+
+mesh = pv.read(vtk_path)
+
+if var_choice in ("u", "v", "w"):
+    idx = {{"u": 0, "v": 1, "w": 2}}[var_choice]
+    plot_data = mesh["velocity"][:, idx]
+elif var_choice == "velocity magnitude":
+    vectors = mesh["velocity"]
+    plot_data = np.linalg.norm(vectors, axis=1)
+elif var_choice == "p":
+    plot_data = mesh["pressure"]
+else:
+    raise RuntimeError(f"Variable '{{var_choice}}' not found")
+
+plotter = BackgroundPlotter()
+plotter.add_mesh(
+    mesh,
+    scalars=plot_data,
+    cmap=cmap,
+    scalar_bar_args={{"title": var_choice}},
+)
+
+if dimension == "2":
+    plotter.view_xy()
+    plotter.enable_parallel_projection()
+    plotter.reset_camera()
+
+plotter.show()
+plotter.app.exec_()
+"""
+
     try:
         proc = subprocess.Popen(
-            [
-                sys.executable,
-                script_path,
-                vtk_path,
-                var_choice,
-                cmap,
-                str(dimension),
-            ],
+            [sys.executable, "-c", plot_code],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
-        
+
         app_state.plotter_process = proc
         logger.success("Plotter window opened")
-    
+
     except Exception as e:
         logger.log_exception(e, "Error launching plotter")
 
-
-def save_plot_image_callback(sender, app_data, user_data):
+def open_in_paraview_callback(sender, app_data, user_data):
     """
-    Save plot image (currently shows message about using external plotter)
-    
-    Args:
-        sender: Button tag
-        app_data: Application data (unused)
-        user_data: User data (unused)
+    Open current VTK file in ParaView.
+    If ParaView is not found, show browse popup.
     """
-    save_path = dpg.get_value("contour_save_path") or DEFAULT_SAVE_PATH
-    
-    logger.info("Screenshot feature requires the external plotting window")
-    logger.info("Please use the plot window's built-in save/screenshot functionality")
-    logger.info(f"Suggested filename: {save_path}")
+    import os
+    import subprocess
+    import shutil
 
+    vtk_path = dpg.get_value("contour_vtk_path") or DEFAULT_VTK
+
+    # Validate file
+    if not validate_file_path(vtk_path, must_exist=True):
+        logger.error(f"VTK file not found: {vtk_path}")
+        return
+
+    # If user previously selected ParaView
+    if app_state.paraview_path and os.path.exists(app_state.paraview_path):
+        paraview_exe = app_state.paraview_path
+    else:
+        # Try to find in PATH
+        paraview_exe = shutil.which("paraview")
+
+    if paraview_exe is None:
+        dpg.configure_item("paraview_popup", show=True)
+        return
+
+    try:
+        subprocess.Popen(
+            [paraview_exe, vtk_path],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        logger.success("Opened file in ParaView")
+
+    except Exception as e:
+        logger.log_exception(e, "Failed to launch ParaView")
+
+def paraview_selected_callback(app_data):
+    """
+    Store selected ParaView executable and close popup.
+    """
+    selected_path = app_data["file_path_name"]
+
+    if not selected_path:
+        return
+
+    app_state.paraview_path = selected_path
+    logger.success(f"ParaView set to: {selected_path}")
+
+    dpg.configure_item("paraview_popup", show=False)
 
 def reset_convergence_plot_callback(sender, app_data, user_data):
     """

@@ -12,6 +12,7 @@ import threading
 from pathlib import Path
 from typing import List, Optional, Tuple, Callable
 import dearpygui.dearpygui as dpg
+from src.solver.monitoring import convergence_monitor
 
 from src.config import (
     HEADER_DIR,
@@ -210,18 +211,10 @@ class SolverRunner:
                     bufsize=SUBPROCESS_BUFFER_SIZE,
                     universal_newlines=True
                 )
-                
+                convergence_monitor.attach(self.run_process)
+                convergence_monitor.start()
+
                 app_state.solver_process = self.run_process
-                
-                # Stream output
-                for line in self.run_process.stdout:
-                    if dpg.is_dearpygui_running():
-                        logger.info(line.strip())
-                
-                # Stream errors
-                for line in self.run_process.stderr:
-                    if dpg.is_dearpygui_running():
-                        logger.warning(line.strip())
                 
                 # Wait for completion
                 self.run_process.wait()

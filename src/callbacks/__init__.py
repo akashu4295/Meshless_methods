@@ -26,6 +26,8 @@ from .solver_callbacks import (
     stop_solver_callback,
     check_solver_status_callback,
     validate_all_parameters_callback,
+    show_restart_callback,
+    show_init_callback,
 )
 
 # Mesh callbacks
@@ -46,7 +48,6 @@ from .mesh_callbacks import (
 # Plot callbacks
 from .plot_callbacks import (
     update_plot_callback,
-    save_plot_image_callback,
     reset_convergence_plot_callback,
     force_convergence_update_callback,
     toggle_convergence_monitor_callback,
@@ -60,6 +61,8 @@ from .plot_callbacks import (
     close_all_plot_windows_callback,
     browse_output_folder_callback,
     set_vtk_from_latest_output_callback,
+    open_in_paraview_callback,
+    paraview_selected_callback,
 )
 
 # Menu callbacks
@@ -105,6 +108,8 @@ __all__ = [
     'stop_solver_callback',
     'check_solver_status_callback',
     'validate_all_parameters_callback',
+    'show_restart_callback',
+    'show_init_callback',
     
     # Mesh callbacks
     'show_multigrid_callback',
@@ -121,7 +126,6 @@ __all__ = [
     
     # Plot callbacks
     'update_plot_callback',
-    'save_plot_image_callback',
     'reset_convergence_plot_callback',
     'force_convergence_update_callback',
     'toggle_convergence_monitor_callback',
@@ -135,6 +139,8 @@ __all__ = [
     'close_all_plot_windows_callback',
     'browse_output_folder_callback',
     'set_vtk_from_latest_output_callback',
+    'paraview_selected_callback',
+    'open_in_paraview_callback',
     
     # Menu callbacks
     'open_logs_callback',
@@ -152,6 +158,7 @@ __all__ = [
     'show_application_state_callback',
     'check_for_updates_callback',
     'report_bug_callback',
+    'toggle_theme_callback',
 
     # boundary conditions callbacks
     'show_bc_window_callback',

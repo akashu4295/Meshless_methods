@@ -61,6 +61,9 @@ class AppState:
         
         # User options
         self._options: Dict[str, bool] = {}
+
+        # Paraview
+        self.paraview_path = None
     
     # ==================== Options Management ====================
     
