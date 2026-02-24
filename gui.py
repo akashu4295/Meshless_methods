@@ -175,6 +175,7 @@ def start_background_services():
     # Start convergence monitor
     try:
         convergence_monitor.start()
+        # solver_monitor.attach()
         logger.success("Convergence monitor started")
     except Exception as e:
         logger.warning(f"Could not start convergence monitor: {e}")
@@ -251,6 +252,7 @@ def main():
         def delayed_start():
             try:
                 convergence_monitor.start()
+                
                 logger.success("Convergence monitor started")
             except Exception as e:
                 logger.warning(f"Could not start convergence monitor: {e}")

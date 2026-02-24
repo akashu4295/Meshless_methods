@@ -1,0 +1,53 @@
+{
+    "version": "2.2",
+    "saved_at": "my_config.json",
+    "preferences": {
+        "font_name": "DejaVuSans.ttf",
+        "font_size": 16
+    },
+    "options": {
+        "enable_gui_logging": true,
+        "enable_file_logging": true,
+        "enable_console_logging": true,
+        "auto_move_outputs": true,
+        "create_dated_folders": true,
+        "append_number_if_exists": true,
+        "auto_start_convergence_monitor": true,
+        "convergence_plot_auto_scale": true,
+        "validate_parameters_on_run": true,
+        "validate_mesh_files_on_run": true,
+        "show_tooltips": true,
+        "confirm_on_exit": false,
+        "dark_theme": true,
+        "auto_open_plot_on_complete": false,
+        "play_sound_on_complete": false
+    },
+    "session": {
+        "solver_method": "Fractional Step",
+        "parameters": {
+            "domain_dimensions": "2",
+            "poly_deg": "3",
+            "phs_deg": "3",
+            "cloud_size_multiplier": "2",
+            "test_derivative": "0",
+            "courant_number": "0.3",
+            "steady_tolerance": "1e-08",
+            "poisson_solver_tolerance": "1e-08",
+            "sor_parameter": "0.5",
+            "time_step": "0.1",
+            "num_time_steps": "100",
+            "write_interval": "50",
+            "Re": "10",
+            "iter_momentum": "5",
+            "iter_timple": "1",
+            "num_vcycles": "10",
+            "num_relax": "50"
+        },
+        "multigrid_enabled": false,
+        "num_mesh_levels": 1,
+        "mesh_files": {
+            "1": "/home/akash/memphys_linux/mesh/2d/CHANNEL/n_2b.msh"
+        },
+        "init_file": ""
+    }
+}

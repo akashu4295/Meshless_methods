@@ -27,7 +27,6 @@ from src.config import (
 )
 from src.callbacks import (
     update_plot_callback,
-    save_plot_image_callback,
     open_file_dialog_callback,
     select_vtk_file_callback,
     change_colormap_callback,
@@ -52,7 +51,7 @@ def create_visualization_panel(themes: dict) -> int:
 
         dpg.add_spacer(height=4)
         _create_plotting_options_section(themes)
-        _create_paraview_ploter(themes)
+        # _create_paraview_ploter(themes)
         dpg.add_spacer(height=1)
         dpg.add_separator()
         
@@ -60,19 +59,6 @@ def create_visualization_panel(themes: dict) -> int:
         _create_logs_section(themes)
     
     return panel
-
-def _create_paraview_ploter(themes: dict):
-    dpg.add_button(label="Open vtk in Paraview", tag="paraview",
-            callback=open_in_paraview_callback, show=True)    
-    with dpg.window(label="ParaView Not Found",
-        modal=True, show=False, tag="paraview_popup",
-        no_title_bar=False, width=400, height=150):
-        themed_texts("ParaView executable not found.", "info")
-        themed_texts("Please browse and select the ParaView executable.", "info")
-        dpg.add_spacer(height=10)
-        dpg.add_button(label="Browse...", callback=lambda: dpg.show_item("paraview_file_dialog"))
-        dpg.add_same_line()
-        dpg.add_button(label="Cancel", callback=lambda: dpg.configure_item("paraview_popup", show=False))
 
 def _create_convergence_plot_section(themes: dict):
     """Create convergence plot with controls"""
@@ -128,6 +114,18 @@ def _create_plotting_options_section(themes: dict):
     if ".vtk" in FILE_EXTENSIONS:
         dpg.add_file_extension(".vtk", parent="file_dialog_vtk",
             color=FILE_EXTENSIONS[".vtk"])
+
+    dpg.add_button(label="Open vtk in Paraview", tag="paraview",
+            callback=open_in_paraview_callback, show=True)    
+    with dpg.window(label="ParaView Not Found",
+        modal=True, show=False, tag="paraview_popup",
+        no_title_bar=False, width=400, height=150):
+        themed_texts("ParaView executable not found.", "info")
+        themed_texts("Please browse and select the ParaView executable.", "info")
+        dpg.add_spacer(height=10)
+        dpg.add_button(label="Browse...", callback=lambda: dpg.show_item("paraview_file_dialog"))
+        dpg.add_same_line()
+        dpg.add_button(label="Cancel", callback=lambda: dpg.configure_item("paraview_popup", show=False))
 
 def _create_logs_section(themes: dict):
     """Create logs display section"""

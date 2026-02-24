@@ -172,22 +172,6 @@ def paraview_selected_callback(app_data):
 
     dpg.configure_item("paraview_popup", show=False)
 
-def save_plot_image_callback(sender, app_data, user_data):
-    """
-    Save plot image (currently shows message about using external plotter)
-    
-    Args:
-        sender: Button tag
-        app_data: Application data (unused)
-        user_data: User data (unused)
-    """
-    save_path = dpg.get_value("contour_save_path") or DEFAULT_SAVE_PATH
-    
-    logger.info("Screenshot feature requires the external plotting window")
-    logger.info("Please use the plot window's built-in save/screenshot functionality")
-    logger.info(f"Suggested filename: {save_path}")
-
-
 def reset_convergence_plot_callback(sender, app_data, user_data):
     """
     Reset the convergence plot

@@ -112,7 +112,7 @@ BASE_PARAMETERS = {
     "poisson_solver_tolerance": 1e-8,
     "sor_parameter": 0.5,
     "time_step": 0.1,
-    "num_time_steps": 100000,
+    "num_time_steps": 10,
     "write_interval": 50,
     "Re": 10,
 }

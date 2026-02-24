@@ -48,7 +48,6 @@ from .mesh_callbacks import (
 # Plot callbacks
 from .plot_callbacks import (
     update_plot_callback,
-    save_plot_image_callback,
     reset_convergence_plot_callback,
     force_convergence_update_callback,
     toggle_convergence_monitor_callback,
@@ -127,7 +126,6 @@ __all__ = [
     
     # Plot callbacks
     'update_plot_callback',
-    'save_plot_image_callback',
     'reset_convergence_plot_callback',
     'force_convergence_update_callback',
     'toggle_convergence_monitor_callback',
