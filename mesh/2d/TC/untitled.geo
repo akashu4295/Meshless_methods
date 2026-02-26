@@ -12,4 +12,4 @@ Physical Curve("innerwall", 3) = {1};
 Physical Curve("outerwall", 4) = {2};
 Physical Surface("fluid", 5) = {1};
 
-Mesh.MeshSizeMax = 0.05;
+Mesh.MeshSizeMax = 0.03;

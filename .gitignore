@@ -12,6 +12,7 @@ mg_heat_conduction.c
 *.vtk
 *.bak
 *.json
+*REPORT*
 solver*
 Solution.csv
 Convergence.csv

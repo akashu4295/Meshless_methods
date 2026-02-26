@@ -1,362 +1,357 @@
-// Author :  Akash Unnikrishnan
-// Affiliation : Indian Institute of Technology Gandhinagar
+// Author : Akash Unnikrishnan
+// Clean SIMD + GPU safe version
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>  
-#include "mat_lib.h"
+#include <math.h>
+#include <stddef.h>
+
+#include "functions.h"
 #include "structures.h"
 
+#define ALIGNMENT 64
+#define PIVOT_TOL 1e-14   /* TODO: expose as user parameter */
+
 ////////////////////////////////////////////////////////////////////////
-// Function Definitions
+// Safe aligned allocation (CPU SIMD friendly, GPU safe)
 ////////////////////////////////////////////////////////////////////////
-double min3(double a, double b, double c){
-    double min = a;
-    if (b < min)
-        min = b;
-    if (c < min)
-        min = c;
-    return min;
+
+static void* safe_malloc(size_t size)
+{
+    void *ptr = NULL;
+
+    if (posix_memalign(&ptr, ALIGNMENT, size) != 0) {
+        fprintf(stderr,"Allocation failed\n");
+        exit(EXIT_FAILURE);
+    }
+
+    return ptr;
 }
 
-void multiply_sparse_matrix_vector_vectorised(double *D_coeff, double *f, double *dfdx, int *cloud, int n_rows_D, int n_cols_D)
+////////////////////////////////////////////////////////////////////////
+// Basic utilities
+////////////////////////////////////////////////////////////////////////
+
+double min3(double a,double b,double c)
 {
-    for (int i = 0; i < n_rows_D; i++) {
-        double result = 0.0;
-        int row_start = i * n_cols_D;
-        for (int j = 0; j < n_cols_D; j++) {
-            int idx = cloud[row_start + j];
-            result += D_coeff[row_start + j] * f[idx];
-        }
-        dfdx[i] = result;
+    double m=a;
+    if(b<m) m=b;
+    if(c<m) m=c;
+    return m;
+}
+
+////////////////////////////////////////////////////////////////////////
+// Sparse matrix-vector
+////////////////////////////////////////////////////////////////////////
+
+void multiply_sparse_matrix_vector_vectorised(
+    const double * restrict D_coeff,
+    const double * restrict f,
+    double * restrict dfdx,
+    const int * restrict cloud,
+    int n_rows_D,
+    int n_cols_D)
+{
+    for(int i=0;i<n_rows_D;i++){
+
+        double sum=0.0;
+        int base=i*n_cols_D;
+
+#pragma omp simd reduction(+:sum)
+        for(int j=0;j<n_cols_D;j++)
+            sum+=D_coeff[base+j]*f[cloud[base+j]];
+
+        dfdx[i]=sum;
     }
 }
 
-void multiply_sparse_matrix_vector_vectorised_gpu(double *D_coeff, double *f, double *dfdx,
-                                                  int *cloud, int n_rows_D, int n_cols_D)
+////////////////////////////////////////////////////////////////////////
+// GPU versions (unchanged behaviour)
+////////////////////////////////////////////////////////////////////////
+
+void multiply_sparse_matrix_vector_vectorised_gpu(
+    double *D_coeff,double *f,double *dfdx,
+    int *cloud,int n_rows_D,int n_cols_D)
 {
-    // Expectation: the host caller must ensure D_coeff, f, dfdx, cloud are present on the device
-    // (or the function is called inside an acc data region where they are present).
+#pragma acc parallel loop gang present(D_coeff,f,dfdx,cloud)
+    for(int i=0;i<n_rows_D;i++){
 
-    // Run the outer loop on the device in parallel
-    #pragma acc parallel loop gang present(D_coeff, f, dfdx, cloud)
-    for (int i = 0; i < n_rows_D; ++i) {
-        double result = 0.0;
-        int row_start = i * n_cols_D;
+        double sum=0.0;
+        int base=i*n_cols_D;
 
-        // inner loop is sequential for each i (you can change to "vector" if beneficial)
-        #pragma acc loop seq
-        for (int j = 0; j < n_cols_D; ++j) {
-            int idx = cloud[row_start + j];
-            // sanity: idx should be within bounds of f[] on device
-            result += D_coeff[row_start + j] * f[idx];
-        }
-        dfdx[i] = result;
+#pragma acc loop vector
+        for(int j=0;j<n_cols_D;j++)
+            sum+=D_coeff[base+j]*f[cloud[base+j]];
+
+        dfdx[i]=sum;
     }
 }
 
-void multiply_sparse_matrix_vector_vectorised_gpu_async(double *D_coeff, double *f, double *dfdx,
-                                                  int *cloud, int n_rows_D, int n_cols_D, int async_queue)
+void multiply_sparse_matrix_vector_vectorised_gpu_async(
+    double *D_coeff,double *f,double *dfdx,
+    int *cloud,int n_rows_D,int n_cols_D,
+    int async_queue)
 {
-    // Run the outer loop on the device in parallel
-    #pragma acc parallel loop gang async(async_queue) present(D_coeff, f, dfdx, cloud)
-    for (int i = 0; i < n_rows_D; ++i) {
-        double result = 0.0;
-        int row_start = i * n_cols_D;
+#pragma acc parallel loop gang async(async_queue) present(D_coeff,f,dfdx,cloud)
+    for(int i=0;i<n_rows_D;i++){
 
-        // inner loop is sequential for each i (you can change to "vector" if beneficial)
-        #pragma acc loop seq
-        for (int j = 0; j < n_cols_D; ++j) {
-            int idx = cloud[row_start + j];
-            // sanity: idx should be within bounds of f[] on device
-            result += D_coeff[row_start + j] * f[idx];
-        }
-        dfdx[i] = result;
+        double sum=0.0;
+        int base=i*n_cols_D;
+
+#pragma acc loop vector
+        for(int j=0;j<n_cols_D;j++)
+            sum+=D_coeff[base+j]*f[cloud[base+j]];
+
+        dfdx[i]=sum;
     }
 }
 
-double** create_matrix1(int n_rows, int n_cols)
+////////////////////////////////////////////////////////////////////////
+// Matrix creation
+////////////////////////////////////////////////////////////////////////
+
+double** create_matrix1(int n_rows,int n_cols)
 {
-    int i;
-    double **A;
-    A = (double **)malloc(n_rows * sizeof(double *));
-    for (i = 0; i < n_rows; i++)
-    {
-        A[i] = (double *)malloc(n_cols * sizeof(double));
-    }
-    for (i = 0; i < n_rows; i++)
-    {
-        for (int j = 0; j < n_cols; j++)
-        {
-            A[i][j] = 0;
-        }
+    double **A=safe_malloc(n_rows*sizeof(*A));
+
+    for(int i=0;i<n_rows;i++){
+        A[i]=safe_malloc(n_cols*sizeof(**A));
+        for(int j=0;j<n_cols;j++)
+            A[i][j]=0.0;
     }
     return A;
 }
 
-double* create_matrix_vectorised(int n_rows, int n_cols)
+double* create_matrix_vectorised(int n_rows,int n_cols)
 {
-    int i;
-    double *A;
-    A = (double *)malloc(n_rows * n_cols * sizeof(double));
-    for (i = 0; i < n_rows*n_cols; i++)
-            A[i] = 0;
+    size_t N=(size_t)n_rows*n_cols;
+    double *A=safe_malloc(N*sizeof(*A));
+
+    for(size_t i=0;i<N;i++) A[i]=0.0;
     return A;
 }
 
-void create_matrix(double ***A, int n_rows, int n_cols)
+void create_matrix(double ***A,int n_rows,int n_cols)
 {
-    int i;
-    *A = (double **)malloc(n_rows * sizeof(double *));
-    for (i = 0; i < n_rows; i++)
-    {
-        (*A)[i] = (double *)malloc(n_cols * sizeof(double));
-    }
-    for (i = 0; i < n_rows; i++)
-    {
-        for (int j = 0; j < n_cols; j++)
-        {
-            (*A)[i][j] = 0;
-        }
-    }
+    *A=create_matrix1(n_rows,n_cols);
 }
 
-double* create_vector(int n_rows)
+double* create_vector(int n)
 {
-    double *A;
-    A = (double *)malloc(n_rows * sizeof(double));
-    for (int i = 0; i < n_rows; i++)
-    {
-        A[i] = 0.0;
-    }
-    return A;
+    double *v=safe_malloc(n*sizeof(*v));
+    for(int i=0;i<n;i++) v[i]=0.0;
+    return v;
 }
 
-void free_matrix(double **A, int n_rows)
+void free_matrix(double **A,int n_rows)
 {
-    int i;
-    for (i = 0; i < n_rows; i++)
-    {
-        free(A[i]);
-    }
+    for(int i=0;i<n_rows;i++) free(A[i]);
     free(A);
 }
 
+////////////////////////////////////////////////////////////////////////
+// Dense matrix multiply
+////////////////////////////////////////////////////////////////////////
 
-void multiply_matrices(double **A, double **B, double **C, int n_rows_A, int n_cols_A, int n_cols_B)
+void multiply_matrices(
+    double **A,double **B,double **C,
+    int n_rows_A,int n_cols_A,int n_cols_B)
 {
-    int i, j, k;
-    for (i = 0; i < n_rows_A; i++)
-    {
-        for (j = 0; j < n_cols_B; j++)
-        {
-            C[i][j] = 0;
-            for (k = 0; k < n_cols_A; k++)
-            {
-                C[i][j] += A[i][k] * B[k][j];
-            }
+    for(int i=0;i<n_rows_A;i++)
+        for(int j=0;j<n_cols_B;j++){
+
+            double sum=0.0;
+
+#pragma omp simd reduction(+:sum)
+            for(int k=0;k<n_cols_A;k++)
+                sum+=A[i][k]*B[k][j];
+
+            C[i][j]=sum;
         }
-    }
-}
-void multiply_matrices_vectorised(double *A, double *B, double *C, int n_rows_A, int n_cols_A, int n_cols_B)
-{
-    int t1, t2; double sum;
-    for (int i = 0; i < n_rows_A; i++) {
-        t1 = i * n_cols_B;
-        t2 = i * n_cols_A;
-        for (int j = 0; j < n_cols_B; j++) {
-            sum = 0.0;
-            for (int k = 0; k < n_cols_A; k++) {
-                sum += A[t2 + k] * B[k * n_cols_B + j];
-            }
-            C[t1 + j] = sum;
-        }
-    }
 }
 
-void multiply_matrix_vector(double **A, double *B, double *C, int n_rows_A, int n_cols_A)
+void multiply_matrices_vectorised(
+    const double * restrict A,
+    const double * restrict B,
+    double * restrict C,
+    int n_rows_A,int n_cols_A,int n_cols_B)
 {
-    int i, j;
-    for (i = 0; i < n_rows_A; i++)
-    {
-        C[i] = 0;
-        for (j = 0; j < n_cols_A; j++)
-        {
-            C[i] += A[i][j] * B[j];
-        }
-    }
-}
+    for(int i=0;i<n_rows_A;i++){
 
-void multiply_vector_matrix(double *B, double **A, double **C, int n_rows_A, int n_cols_A)
-{
-    int i, j;
-    for (i = 0; i < n_rows_A; i++)
-    {
-        for (j = 0; j < n_cols_A; j++)
-        {
-            C[i][j] = B[i] * A[i][j];
+        int rowA=i*n_cols_A;
+        int rowC=i*n_cols_B;
+
+        for(int j=0;j<n_cols_B;j++){
+
+            double sum=0.0;
+
+#pragma omp simd reduction(+:sum)
+            for(int k=0;k<n_cols_A;k++)
+                sum+=A[rowA+k]*B[k*n_cols_B+j];
+
+            C[rowC+j]=sum;
         }
     }
 }
 
-double vector_norm(double *A, int n_rows_A)
+////////////////////////////////////////////////////////////////////////
+// Matrix-vector
+////////////////////////////////////////////////////////////////////////
+
+void multiply_matrix_vector(
+    double **A,double *B,double *C,
+    int n_rows_A,int n_cols_A)
 {
-    int i;
-    double result = 0;
-    for (i = 0; i < n_rows_A; i++)
-    {
-        result += A[i] * A[i];
+    for(int i=0;i<n_rows_A;i++){
+
+        double sum=0.0;
+
+#pragma omp simd reduction(+:sum)
+        for(int j=0;j<n_cols_A;j++)
+            sum+=A[i][j]*B[j];
+
+        C[i]=sum;
     }
-    return sqrt(result);
 }
 
-void matrixInverse_Gauss_Jordan(double** matrix1, double** inverse, int order)
+/* TODO: rename -> scale_rows */
+void multiply_vector_matrix(
+    double *B,double **A,double **C,
+    int n_rows_A,int n_cols_A)
 {
-    double temp1;
-    double** matrix;
-    create_matrix(&matrix, order, 2 * order);
-    for (int i = 0; i < order; i++) {
-        for (int j = 0; j < order; j++) {
-            matrix[i][j] = matrix1[i][j];
-        }
-    }
-    // Create the augmented matrix
-    for (int i = 0; i < order; i++) {
-        for (int j = order; j < 2 * order; j++) {
-            // Add '1' at the diagonal places of
-            // the matrix to create a identity matrix
-            if (j == (i + order))
-                matrix[i][j] = 1;
-            else
-                matrix[i][j] = 0;
-        }
-    }
-
-    // Interchange the row of matrix,
-    for (int i = order - 1; i > 0; i--) {
-        // Directly swapping the rows using pointers saves
-        // time
- 
-        if (matrix[i - 1][0] < matrix[i][0]) {
-            double* temp = matrix[i];
-            matrix[i] = matrix[i - 1];
-            matrix[i - 1] = temp;
-        }
-    }
- 
-    // Replace a row by sum of itself and a
-    // constant multiple of another row of the matrix
-    for (int i = 0; i < order; i++) {
- 
-        for (int j = 0; j < order; j++) {
- 
-            if (j != i) {
- 
-                temp1 = matrix[j][i] / matrix[i][i];
-                for (int k = 0; k < 2 * order; k++) {
- 
-                    matrix[j][k] -= matrix[i][k] * temp1;
-                }
-            }
-        }
-    }
- 
-    // Multiply each row by a nonzero integer.
-    // Divide row element by the diagonal element
-    for (int i = 0; i < order; i++) {
- 
-        temp1 = matrix[i][i];
-        for (int j = 0; j < 2 * order; j++) {
- 
-            matrix[i][j] = matrix[i][j] / temp1;
-        }
-    }
-
-    for (int i = 0; i < order; i++) {
-        for (int j = 0; j < order; j++) {
-            inverse[i][j] = matrix[i][j + order];
-        }
-    }
-    free_matrix(matrix, order);
+    for(int i=0;i<n_rows_A;i++)
+        for(int j=0;j<n_cols_A;j++)
+            C[i][j]=B[i]*A[i][j];
 }
 
-void matrixInverse_Gauss_Jordan_vectorised(double* A, double* Ainv, int n){
-    // Create augmented matrix [A | I]
-    double *aug = (double *)malloc(sizeof(double) * n * 2 * n);
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < n; j++) {
-            aug[i * 2 * n + j] = A[i * n + j];
-            aug[i * 2 * n + (j + n)] = (i == j) ? 1.0 : 0.0;
-        }
+////////////////////////////////////////////////////////////////////////
+// Norms
+////////////////////////////////////////////////////////////////////////
+
+double vector_norm(double *A,int n)
+{
+    double sum=0.0;
+
+#pragma omp simd reduction(+:sum)
+    for(int i=0;i<n;i++)
+        sum+=A[i]*A[i];
+
+    return sqrt(sum);
+}
+
+/* TODO: actually RMS norm */
+double l2_norm(double *A,double *B,int n)
+{
+    double sum=0.0;
+
+#pragma omp simd reduction(+:sum)
+    for(int i=0;i<n;i++){
+        double d=A[i]-B[i];
+        sum+=d*d;
     }
 
-    // Gauss–Jordan elimination
-    for (int i = 0; i < n; i++) {
-        // Pivot selection (partial)
-        double maxEl = fabs(aug[i * 2 * n + i]);
-        int maxRow = i;
-        for (int k = i + 1; k < n; k++) {
-            double val = fabs(aug[k * 2 * n + i]);
-            if (val > maxEl) {
-                maxEl = val;
-                maxRow = k;
-            }
+    return sqrt(sum/n);
+}
+
+////////////////////////////////////////////////////////////////////////
+// Robust Gauss–Jordan inverse
+////////////////////////////////////////////////////////////////////////
+
+void matrixInverse_Gauss_Jordan_vectorised(
+    double *A,double *Ainv,int n)
+{
+    size_t W=2*(size_t)n;
+    double *aug=safe_malloc(sizeof(double)*n*W);
+
+    for(int i=0;i<n;i++)
+        for(int j=0;j<n;j++){
+            aug[i*W+j]=A[i*n+j];
+            aug[i*W+j+n]=(i==j);
         }
 
-        // Swap rows if needed
-        if (maxRow != i) {
-            for (int k = 0; k < 2 * n; k++) {
-                double tmp = aug[i * 2 * n + k];
-                aug[i * 2 * n + k] = aug[maxRow * 2 * n + k];
-                aug[maxRow * 2 * n + k] = tmp;
-            }
+    for(int i=0;i<n;i++){
+
+        int pivot=i;
+        double max=fabs(aug[i*W+i]);
+
+        for(int r=i+1;r<n;r++){
+            double v=fabs(aug[r*W+i]);
+            if(v>max){max=v;pivot=r;}
         }
 
-        // Normalize pivot row
-        double pivot = aug[i * 2 * n + i];
-        if (fabs(pivot) < 1e-14) {
-            fprintf(stderr, "Matrix is singular or nearly singular.\n");
+        if(max<PIVOT_TOL){
+            fprintf(stderr,"Singular matrix\n");
             free(aug);
             return;
         }
-        for (int k = 0; k < 2 * n; k++)
-            aug[i * 2 * n + k] /= pivot;
 
-        // Eliminate all other rows
-        for (int r = 0; r < n; r++) {
-            if (r != i) {
-                double factor = aug[r * 2 * n + i];
-                for (int c = 0; c < 2 * n; c++) {
-                    aug[r * 2 * n + c] -= factor * aug[i * 2 * n + c];
-                }
+        if(pivot!=i)
+            for(size_t c=0;c<W;c++){
+                double t=aug[i*W+c];
+                aug[i*W+c]=aug[pivot*W+c];
+                aug[pivot*W+c]=t;
             }
+
+        double piv=aug[i*W+i];
+
+#pragma omp simd
+        for(size_t c=0;c<W;c++)
+            aug[i*W+c]/=piv;
+
+        for(int r=0;r<n;r++){
+            if(r==i) continue;
+
+            double f=aug[r*W+i];
+
+#pragma omp simd
+            for(size_t c=0;c<W;c++)
+                aug[r*W+c]-=f*aug[i*W+c];
         }
     }
 
-    // Extract inverse
-    for (int i = 0; i < n; i++)
-        for (int j = 0; j < n; j++)
-            Ainv[i * n + j] = aug[i * 2 * n + (j + n)];
+    for(int i=0;i<n;i++)
+        for(int j=0;j<n;j++)
+            Ainv[i*n+j]=aug[i*W+j+n];
 
     free(aug);
 }
 
-
-double l2_norm(double *A, double *B, int n_rows_A)
+void matrixInverse_Gauss_Jordan(
+    double **matrix1,double **inverse,int n)
 {
-    int i;
-    double result = 0;
-    for (i = 0; i < n_rows_A; i++)
-    {
-        result += (A[i] - B[i]) * (A[i] - B[i]);
-    }
-    return sqrt(result/n_rows_A);
+    /* TODO: eventually remove pointer-based interface */
+
+    double *A=create_matrix_vectorised(n,n);
+    double *Ai=create_matrix_vectorised(n,n);
+
+    for(int i=0;i<n;i++)
+        for(int j=0;j<n;j++)
+            A[i*n+j]=matrix1[i][j];
+
+    matrixInverse_Gauss_Jordan_vectorised(A,Ai,n);
+
+    for(int i=0;i<n;i++)
+        for(int j=0;j<n;j++)
+            inverse[i][j]=Ai[i*n+j];
+
+    free(A);
+    free(Ai);
 }
 
-void multiply_vector_matrix_columnwise_vectorised(double *B, double *A, double *C, int n_rows_A, int n_cols_A) {
-    for (int i = 0; i < n_cols_A; i++) {
-        C[i] = 0.0;
-        for (int j = 0; j < n_rows_A; j++) {
-            C[i] += B[j] * A[j * n_cols_A + i];
-        }
+////////////////////////////////////////////////////////////////////////
+
+void multiply_vector_matrix_columnwise_vectorised(
+    double *B,double *A,double *C,
+    int n_rows_A,int n_cols_A)
+{
+    for(int i=0;i<n_cols_A;i++){
+
+        double sum=0.0;
+
+#pragma omp simd reduction(+:sum)
+        for(int j=0;j<n_rows_A;j++)
+            sum+=B[j]*A[j*n_cols_A+i];
+
+        C[i]=sum;
     }
 }

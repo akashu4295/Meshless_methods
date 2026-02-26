@@ -30,6 +30,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 #include "src/c_header_files/functions.h"
+#include <time.h>
 
 struct parameters parameters;
 

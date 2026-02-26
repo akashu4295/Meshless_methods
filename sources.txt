@@ -13,3 +13,5 @@ src/c_header_files/initialisation.c
 src/c_header_files/openACC_functions.c
 -lm
 -O3
+-march=native
+-fopenmp

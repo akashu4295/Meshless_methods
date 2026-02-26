@@ -3,32 +3,33 @@
 #   make OPENACC=1    # for OpenACC GPU mode
 #   make DEBUG=1      # to include debug symbols
 #   make              # for default CPU mode
-# ----- OpenACC mode -----
+# ----- Mode Selection -----
+
 ifeq ($(OPENACC),1)
     CC = nvc
     MODE = openacc
-    CFLAGS = -acc -Minfo=accel -O3 -Wall -Wextra -Wshadow -Wpointer-arith
+    CFLAGS = -acc -Minfo=accel -O3 -Wall -Wpointer-arith
+    LDFLAGS = -lm
     GPU_MSG = "Compiling with NVC (OpenACC GPU mode)"
-endif
 
-# ----- Default CPU mode -----
-ifeq ($(MODE),)
+else ifeq ($(ACC),1)
+    CC = gcc
+    MODE = acc
+    CFLAGS = -fopenacc -fopenmp -O3 -Wall -Wpointer-arith -march=native
+    LDFLAGS = -lm
+    GPU_MSG = "Compiling with GCC OpenACC"
+
+else
     CC = gcc
     MODE = cpu
-    CFLAGS = -O3 -march=native -Wall -Wextra -Wshadow -Wpointer-arith
+    CFLAGS = -O3 -march=native -fopenmp -Wall -Wpointer-arith
     LDFLAGS = -lm
     GPU_MSG = "Compiling with GCC (CPU mode)"
 endif
 
-
-# Setting Debug flag
-
 ifeq ($(DEBUG),1)
     CFLAGS += -g
 endif
-
-
-# Files
 
 # Files
 

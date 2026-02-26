@@ -1,6 +1,5 @@
 #include "structures.h"
 #include "functions.h"
-#include "mat_lib.h"
 #include "kdtree.h"
 #include <stdio.h>
 #include <stdlib.h>

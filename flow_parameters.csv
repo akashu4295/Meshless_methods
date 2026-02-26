@@ -2,7 +2,7 @@ domain_dimensions,2
 poly_deg,3
 phs_deg,3
 cloud_size_multiplier,2
-test_derivative,0
+test_derivative,1
 courant_number,0.3
 steady_tolerance,1e-08
 poisson_solver_tolerance,1e-08
@@ -16,7 +16,7 @@ iter_timple,1
 num_vcycles,10
 num_relax,50
 fractional_step,1
-Poisson_solver_type,1
+Poisson_solver_type,3
 neumann_flag_boundary,1
 facRe,1
 facdt,1
