@@ -1,0 +1,34 @@
+Channel
+1. learn pressure regularisation?
+2. 5 time steps, 10000 relaxations, print divergence at the end, find what is del.un+1 at the end. 
+3. Change reference pressure to average pressure, test if there are any difference
+4. try 3 and 5 polynomial degrees
+5. try 2 mesh densities
+
+2. Ensuring global mass balance by scaling inlet and outlet velocities. 
+3. Test on Taylor Couette flow
+
+
+CPU
+1. Multigriding BiCGstab
+
+GPU
+1. Multigrid Jacobi-Poisson solver on GPU
+2. Full multigriding
+
+Problem selection:
+1. Flow bifurcations
+2. Asymmetric stenosis (blockage of blood vessels)
+
+CODE Bugs and TODOs
+1. Multigrid solver not working after latest restructuring of boundary conditions implementation.
+2. Pressure Poisson solver gives very high residual values. 
+3. The BiCGStab gives a different solution compared to the Jacobi/Gauss Seidal
+4. Implement Full Multigrid
+5. Interion boundary condition in bc.csv shows a read error saying unkonown boundary type
+
+GUI Bugs
+1. Menubar-> Open configuration : Callback needs fixing
+2. Autoscrolling in logs
+3. Tooltips for flow parameter variables
+4. STOP button to exit the simulation with an automatic save.

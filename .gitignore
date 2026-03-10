@@ -2,8 +2,10 @@ Backup/
 logs/
 output/
 config/
+data/
 linear_stability.c
 mg_heat_conduction.c
+test*
 *.jpg
 *.jpeg
 *.png

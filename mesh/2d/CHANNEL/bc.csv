@@ -1,0 +1,5 @@
+bottom,wall,u=0,v=0,w=0
+outlet,pressure_outlet,p=0
+top,wall,u=0,v=0,w=0
+inlet,velocity_inlet,u=1,v=0,w=0
+fluid,interior

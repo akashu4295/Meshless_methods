@@ -25,7 +25,8 @@ typedef enum {
     BC_SUPERSONIC_INLET = 8,    // All variables specified
     BC_SUPERSONIC_OUTLET = 9,   // All variables extrapolated
     BC_SUBSONIC_INLET = 10,      // Specify T, p_total, direction
-    BC_SUBSONIC_OUTLET = 11     // Specify p_static, extrapolate others
+    BC_SUBSONIC_OUTLET = 11,     // Specify p_static, extrapolate others
+    BC_DEFAULT = 20    // 
 } BCType;
 
 typedef struct {
