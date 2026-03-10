@@ -348,7 +348,7 @@ void FS_calculate_residuals_vectorised(PointStructure* mypointStruct, FieldVaria
             sum_res += fabs(field->res[i]);
         }
     }
-    printf("Poisson residual: %e\n", sum_res);
+    // printf("Poisson residual: %e\n", sum_res);
 }
 
 void FS_update_velocity_vectorised(PointStructure* myPointStruct, FieldVariables* field)

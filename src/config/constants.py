@@ -204,7 +204,7 @@ LOG_WINDOW_HEIGHT = 250
 CONVERGENCE_UPDATE_INTERVAL = 2.0
 
 # Auto-scroll threshold for log window
-LOG_SCROLL_THRESHOLD = 5
+LOG_SCROLL_THRESHOLD = 10
 
 # ============================================================
 # Font Configuration
