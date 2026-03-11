@@ -5,9 +5,7 @@ CODE Bugs and TODOs
 
 GUI Bugs
 1. Menubar-> Open configuration : Callback needs fixing
-2. Autoscrolling in logs
-3. Tooltips for flow parameter variables
-4. STOP button to exit the simulation with an automatic save.
+2. Rerunning the solver doesn't print log due to process error.
 
 CPU
 1. Multigriding BiCGstab

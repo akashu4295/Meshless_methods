@@ -11,6 +11,8 @@ from src.config import (
     BASE_PARAMETERS,
     IMPLICIT_PARAMETERS,
     MULTIGRID_PARAMETERS,
+    PARAMETER_LABELS,
+    PARAMETER_TOOLTIPS,
     SOLVER_METHODS,
     Poisson_SOLVER_METHODS,
     DEFAULT_SOLVER_METHOD,
@@ -41,6 +43,7 @@ from src.callbacks import (
     show_bc_window_callback,
     show_restart_callback,
     show_init_callback,
+    stop_solver_callback,
 )
 
 
@@ -148,29 +151,12 @@ def _create_poisson_solver_method_section():
 
 def _create_flow_parameters_section():
     for pname, pval in BASE_PARAMETERS.items():
-        tag = f"param_{pname}"
-        dpg.add_input_text(
-            label=pname,
-            tag=tag,
-            default_value=str(pval),
-            width=PARAMETER_INPUT_WIDTH,
-            callback=validate_numeric_input,
-            on_enter=True
-        )
+        _add_parameter_input(pname, pval)
 
 
 def _create_implicit_parameters_section():
     for pname, pval in IMPLICIT_PARAMETERS.items():
-        tag = f"param_{pname}"
-        dpg.add_input_text(
-            label=pname,
-            tag=tag,
-            default_value=str(pval),
-            width=PARAMETER_INPUT_WIDTH,
-            show=False,
-            callback=validate_numeric_input,
-            on_enter=True
-        )
+        _add_parameter_input(pname, pval, show=False)
 
 
 def _create_multigrid_section():
@@ -180,26 +166,18 @@ def _create_multigrid_section():
         callback=show_multigrid_callback
     )
     with dpg.tooltip("multigrid_toggle"):
-        themed_texts("Enable multigrid solver with multiple mesh levels",
-                     "info")
+        themed_texts("Enable multigrid solver with multiple mesh levels", "info")
         dpg.add_separator()
-        themed_texts("Provide mesh files finest -> coarsest.","info")
-        themed_texts("Number of files must match the mesh levels specified below.","info")
+        themed_texts("Provide mesh files finest -> coarsest.", "info")
+        themed_texts("Number of files must match the mesh levels specified below.", "info")
 
     with dpg.group(horizontal=False, tag="multigrid_parameters_section", show=False):
         dpg.add_spacer(height=4)
-        themed_texts("Multigrid Parameters","subheader")
+        themed_texts("Multigrid Parameters", "subheader")
         for pname, pval in MULTIGRID_PARAMETERS.items():
-            dpg.add_input_text(
-                label=pname,
-                tag=f"param_{pname}",
-                default_value=str(pval),
-                width=PARAMETER_INPUT_WIDTH,
-                callback=validate_numeric_input,
-                on_enter=True
-            )
+            _add_parameter_input(pname, pval)
         dpg.add_input_int(
-            label="Mesh levels",
+            label="Mesh Levels",
             default_value=1,
             min_value=1,
             max_value=MAX_MESH_LEVELS,
@@ -208,7 +186,6 @@ def _create_multigrid_section():
             callback=update_mesh_inputs_callback
         )
         dpg.add_spacer(height=4)
-
 
 def _create_geometry_section(themes: dict):
     themed_texts("Create geometry in Gmsh, use a .geo file, or browse for an existing .msh file",
@@ -365,7 +342,6 @@ def _create_restart_file_section():
         dpg.add_file_extension(".csv", parent="file_dialog_restart",
                                color=FILE_EXTENSIONS[".csv"])
 
-
 def _create_run_button(themes: dict):
     dpg.add_checkbox(label="Run on GPU (if supported)", tag="gpu_toggle")
     dpg.add_spacer(height=6)
@@ -383,6 +359,41 @@ def _create_run_button(themes: dict):
         themed_texts("2. Compiles C sources with gcc", "info")
         themed_texts("3. Runs the solver executable", "info")
 
+    dpg.add_spacer(height=4)
+    stop_btn = dpg.add_button(
+        label="Stop Solver",
+        width=270,
+        height=RUN_BUTTON_HEIGHT,
+        callback=stop_solver_callback,
+        tag="stop_solver_button",
+        enabled=False  # disabled until solver starts
+    )
+    with dpg.tooltip(stop_btn):
+        themed_texts("Terminate the running solver process", "info")
+
     if "button" in themes:
         dpg.bind_item_theme(run_btn, themes["button"])
+    if "button_danger" in themes:  # optional red theme
+        dpg.bind_item_theme(stop_btn, themes["button_danger"])
 
+def _add_parameter_input(pname: str, pval, show: bool = True):
+    """Helper to add a labelled input with tooltip for a single parameter."""
+    tag = f"param_{pname}"
+    label = PARAMETER_LABELS.get(pname, pname)  # fall back to raw name if missing
+    
+    dpg.add_input_text(
+        label=label,
+        tag=tag,
+        default_value=str(pval),
+        width=PARAMETER_INPUT_WIDTH,
+        callback=validate_numeric_input,
+        on_enter=True,
+        show=show,
+    )
+
+    if pname in PARAMETER_TOOLTIPS:
+        description, suggestion = PARAMETER_TOOLTIPS[pname]
+        with dpg.tooltip(tag):
+            themed_texts(description, "info")
+            dpg.add_separator()
+            themed_texts(suggestion, "info")

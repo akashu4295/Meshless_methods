@@ -79,7 +79,10 @@ def run_solver_callback(sender, app_data, user_data):
         button_tag=sender,
         on_complete=on_solver_complete
     )
-    
+    if success:
+        # Enable stop button when solver starts
+        if dpg.does_item_exist("stop_solver_button"):
+                dpg.enable_item("stop_solver_button")
     if not success:
         logger.error("Failed to start solver")
 
@@ -90,6 +93,10 @@ def on_solver_complete(returncode: int):
     Args:
         returncode: Process return code
     """
+    # Disable stop button when solver finishes
+    if dpg.does_item_exist("stop_solver_button"):
+        dpg.disable_item("stop_solver_button")
+
     if returncode == 0:
         logger.success("Solver run completed successfully")
         
@@ -98,7 +105,6 @@ def on_solver_complete(returncode: int):
         organize_solver_outputs()
     else:
         logger.error(f"Solver run failed with return code {returncode}")
-
 
 def validate_numeric_input(sender, app_data, user_data):
     """

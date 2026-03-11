@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Optional
 import dearpygui.dearpygui as dpg
 from src.config import LOG_SCROLL_THRESHOLD
-
+import queue
 
 class Logger:
     """
@@ -59,6 +59,7 @@ class Logger:
         self._enable_console = True
         self._enable_file = True
         self._enable_gui = True
+        self._gui_queue = queue.Queue()
     
     def set_file_handle(self, file_handle):
         """Update the file handle for logging"""
@@ -120,33 +121,35 @@ class Logger:
                 print(f"Error writing to log file: {e}")
     
     def _write_to_gui(self, message: str):
-        """Write message to GUI log window"""
+        """Queue message for GUI - safe to call from any thread"""
         if not self._enable_gui:
             return
-        
-        # Check if DearPyGUI is running before attempting GUI operations
+        self._gui_queue.put(message)
+
+    def flush_gui_queue(self):
         try:
             if not dpg.is_dearpygui_running():
                 return
-        except:
-            return
-            
-        try:
-            if not dpg.does_item_exist(self.log_window_tag):
+            if not dpg.does_item_exist(self.log_child_tag):
                 return
-            
-            # Get current content
-            current = dpg.get_value(self.log_window_tag) or ""
-            
-            # Append new message
-            dpg.set_value(self.log_window_tag, current + message + "\n")
-            
-            # Auto-scroll if near bottom
-            self._auto_scroll()
-            
+
+            messages = []
+            while not self._gui_queue.empty():
+                try:
+                    messages.append(self._gui_queue.get_nowait())
+                except queue.Empty:
+                    break
+
+            if not messages:
+                return
+
+            for msg in messages:
+                dpg.add_text(msg, parent=self.log_child_tag)
+
+            dpg.set_y_scroll(self.log_child_tag, -1.0)
+
         except Exception as e:
-            # Silently fail during initialization
-            pass
+            print(f"flush error: {e}")
     
     def _write_to_console(self, message: str, level: str = INFO):
         """Write message to console with color"""
@@ -171,7 +174,7 @@ class Logger:
             
             # If within threshold of bottom, scroll to bottom
             if abs(max_scroll - current_scroll) < LOG_SCROLL_THRESHOLD:
-                dpg.set_y_scroll(self.log_child_tag, max_scroll)
+                dpg.set_y_scroll(self.log_child_tag, -1)
         except Exception:
             # Silently fail if scrolling doesn't work
             pass
@@ -236,14 +239,13 @@ class Logger:
         self.separator(char, length)
         self.log(message, self.INFO)
         self.separator(char, length)
-    
+
     def clear(self):
         """Clear the GUI log window"""
         try:
-            if dpg.does_item_exist(self.log_window_tag):
-                dpg.set_value(self.log_window_tag, "")
-                if dpg.does_item_exist(self.log_child_tag):
-                    dpg.set_y_scroll(self.log_child_tag, 0)
+            if dpg.does_item_exist(self.log_child_tag):
+                dpg.delete_item(self.log_child_tag, children_only=True)
+                dpg.set_y_scroll(self.log_child_tag, 0.0)
         except Exception as e:
             print(f"Error clearing log window: {e}")
     
@@ -331,28 +333,10 @@ class Logger:
         self.info(f"{param_name}: {value}{unit_str}")
 
 
-# Create a global logger instance
-# Other modules should import this instance
-logger = Logger()
-
-
-# Convenience functions for backward compatibility
-# def append_log(message: str):
-#     """Append a message to the log (backward compatible)"""
-#     logger.info(message)
-
-
-# def append_log_file(file_handle, message: str):
-#     """Append a message to log file (backward compatible)"""
-#     if file_handle is not None:
-#         try:
-#             if not file_handle.closed:
-#                 file_handle.write(message + "\n")
-#                 file_handle.flush()
-#         except Exception as e:
-#             print(f"Error writing to log file: {e}")
-
-
 def clear_logs():
     """Clear the log window (backward compatible)"""
     logger.clear()
+
+# Create a global logger instance
+# Other modules should import this instance
+logger = Logger(log_window_tag="log_window", log_child_tag="log_child")

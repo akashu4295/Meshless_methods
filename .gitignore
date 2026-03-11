@@ -39,12 +39,6 @@ timple_solver.n001.cubin
 timple_solver.n001.fatbin
 timple_solver.n001.gpu
 timple_solver.n001.ptx
-test.c
-solver.exe
-solver.out
-GUI_plans.txt
-mg_heat_conduction.c
-gui_bak.py
 boundary_tags*
 cloud*
 coordinates*
@@ -56,5 +50,4 @@ test*
 COMP*
 bc2*
 .build*
-header_files/legacy
 *_pycache_*
