@@ -7,10 +7,8 @@ This repository contains a C-based implementation of a **Meshless Method** for s
 ### Quick Notes on status of the code
 
 ### IN-WORK/ TODO
-1. Implementing various boundary conditions
-2. Extending OpenACC pragmas to implement GPU acceleration.
-3. A multigrid (multi-level) accelerated Navier Stokes solver to achieve steady state using TIMPLE in meshless framework
-4. A compressible flow solver
+1. A multigrid (multi-level) accelerated Navier Stokes solver to achieve steady state using TIMPLE in meshless framework
+2. A compressible flow solver
    
 ### Current Status: 
 1. The meshless (first and second derivative matrices) Dx, Dy, Dz, and Laplacian matrices for a Gmsh ASCII (version 2) .msh file implemented.
@@ -22,6 +20,8 @@ This repository contains a C-based implementation of a **Meshless Method** for s
 7. Navier Stokes Solver implemented with Fractional Step
 8. Navier Stokes Solver implemented with Time Implicit solver
 9. Multigrided Poisson solver
+10. Various boundary conditions implemented.
+11. GPU parallelised with OpenACC
 
 **Make necessary changes in the grid_filenames.csv and flow_parameters.csv
 grid_filenames.csv has the mesh filenames in the order from finest grid to coarse grid
