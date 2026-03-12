@@ -265,7 +265,10 @@ def main():
         
         dpg.set_frame_callback(2, delayed_start)
         
-        dpg.start_dearpygui()
+        # dpg.start_dearpygui()
+        while dpg.is_dearpygui_running():
+            logger.flush_gui_queue()  # drain queue on main thread
+            dpg.render_dearpygui_frame()
         print("Main loop ended")
         
     except Exception as e:

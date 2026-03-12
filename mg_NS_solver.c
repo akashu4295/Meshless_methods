@@ -9,7 +9,7 @@
 // Indian Institute of Technology Gandhinagar, India
 //
 // Date: February 2026
-// Version: 2.3
+// Version: 2.5
 //
 // License: MIT License
 // Contact: akash.unnikrishnan@iitgn.ac.in
@@ -30,6 +30,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 #include "src/c_header_files/functions.h"
+#include <time.h>
 
 struct parameters parameters;
 
@@ -50,6 +51,7 @@ int main()
     AllocateMemoryFieldVariables(&field, myPointStruct, parameters.num_levels);
     check_restart_file(&myPointStruct[0], &field[0]);
     parameters.dt = calculate_dt(&myPointStruct[0]);
+    // write_processed_grid_data(myPointStruct, 1);
 
     clock_start = clock();    // Start the clock
     for (int ii = 0; ii<parameters.num_levels ; ii = ii +1)
@@ -86,6 +88,7 @@ int main()
     file2 = fopen("Convergence.csv", "w"); // Write data to a file
     int num_nodes = myPointStruct[0].num_nodes;
 
+    
     if (parameters.fractional_step)
         if (parameters.dimension == 3){
             for (int it = 0; it<parameters.num_time_steps; it++ ) 

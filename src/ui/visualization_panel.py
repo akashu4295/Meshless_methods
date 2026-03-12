@@ -134,8 +134,9 @@ def _create_logs_section(themes: dict):
     # Scrollable child window for logs
     with dpg.child_window(height=LOG_WINDOW_HEIGHT,
         border=True, tag="log_child"):
-        dpg.add_input_text(tag="log_window", multiline=True, readonly=True,
-            width=-1, height=-1, default_value="Ready.\n")
+        # dpg.add_input_text(tag="log_window", multiline=True, readonly=True,
+        #     width=-1, height=-1, default_value="Ready.\n")
+        pass
     
     clear_log_btn = dpg.add_button( label="Clear Logs",
         callback=lambda: clear_logs(), tag="clear_logs_button")

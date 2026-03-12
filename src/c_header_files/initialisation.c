@@ -1,6 +1,5 @@
 #include "structures.h"
 #include "functions.h"
-#include "mat_lib.h"
 #include "kdtree.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,13 +31,12 @@ BCType parse_bc_type(const char* s){
     if (!strcmp(s, "subsonic_inlet")) return BC_SUBSONIC_INLET;
     if (!strcmp(s, "subsonic_outlet")) return BC_SUBSONIC_OUTLET;
     if (!strcmp(s, "interior")) return BC_INTERIOR;
-    return BC_INTERIOR;
+    return BC_DEFAULT;
 }
 
 void read_physical_names(char* meshfile, PointStructure* ps)
 {
     FILE* file_pn = fopen(meshfile, "r");
-    printf("%s\n",meshfile);
     if (file_pn == NULL)
     {
         printf("Error: Unable to open the file\n");
@@ -78,7 +76,7 @@ void read_physical_names(char* meshfile, PointStructure* ps)
         } else {
             strcpy(ps->boundary_map[i].name, raw);
         }
-        printf("Physical ID: %d, Name: %s\n", ps->boundary_map[i].physical_id, ps->boundary_map[i].name);
+        printf("\tPhysical ID: %d, Name: %s\n", ps->boundary_map[i].physical_id, ps->boundary_map[i].name);
         
         // Initialize with default values
         ps->boundary_map[i].bc.type = BC_INTERIOR;
@@ -118,7 +116,7 @@ void read_boundary_conditions_file(char* bcfile, PointStructure* ps){
             continue;
 
         BCValue bc;
-        bc.type = BC_INTERIOR;
+        bc.type = BC_DEFAULT;
         bc.u = 0.0; bc.v = 0.0; bc.w = 0.0; bc.p = 0.0; bc.v_n = 0; bc.v_t = 0;
         if (parameters.compressible_flow){
             bc.p_total = parameters.p_ref;
@@ -153,7 +151,7 @@ void read_boundary_conditions_file(char* bcfile, PointStructure* ps){
         const char* type = tokens[1];
 
         bc.type = parse_bc_type(type);
-        if (bc.type == BC_INTERIOR) {
+        if (bc.type == BC_DEFAULT) {
             printf("BC CSV error (line %d): unknown BC type '%s'\n",
                    lineno, type);
             continue;
@@ -314,8 +312,8 @@ void apply_boundary_conditions(PointStructure* myPointStruct, FieldVariables* fi
                     {
                         double nx = myPointStruct[ii].x_normal[i];
                         double ny = myPointStruct[ii].y_normal[i];
-                        decompose_velocity(vn, vt, nx, ny,
-                                           &field[ii].u[i], &field[ii].v[i]);
+                        decompose_velocity(vn, vt, nx, ny, &field[ii].u[i], &field[ii].v[i]);
+                        decompose_velocity(vn, vt, nx, ny, &myPointStruct[ii].node_bc[i].u, &myPointStruct[ii].node_bc[i].v);
                         if (parameters.dimension == 3)
                             field[ii].w[i] = 0.0;
                     }
@@ -344,8 +342,8 @@ void apply_boundary_conditions(PointStructure* myPointStruct, FieldVariables* fi
                     {
                         double nx = myPointStruct[ii].x_normal[i];
                         double ny = myPointStruct[ii].y_normal[i];
-                        decompose_velocity(vn, vt, nx, ny,
-                                           &field[ii].u[i], &field[ii].v[i]);
+                        decompose_velocity(vn, vt, nx, ny, &field[ii].u[i], &field[ii].v[i]);
+                        decompose_velocity(vn, vt, nx, ny, &myPointStruct[ii].node_bc[i].u, &myPointStruct[ii].node_bc[i].v);
                         if (parameters.dimension == 3)
                             field[ii].w[i] = 0.0;
                     }
@@ -369,8 +367,8 @@ void apply_boundary_conditions(PointStructure* myPointStruct, FieldVariables* fi
                     {
                         double nx = myPointStruct[ii].x_normal[i];
                         double ny = myPointStruct[ii].y_normal[i];
-                        decompose_velocity(vn, vt, nx, ny,
-                                           &field[ii].u[i], &field[ii].v[i]);
+                        decompose_velocity(vn, vt, nx, ny, &field[ii].u[i], &field[ii].v[i]);
+                        decompose_velocity(vn, vt, nx, ny, &myPointStruct[ii].node_bc[i].u, &myPointStruct[ii].node_bc[i].v);
                         if (parameters.dimension == 3)
                             field[ii].w[i] = 0.0;
                     }
@@ -399,8 +397,8 @@ void apply_boundary_conditions(PointStructure* myPointStruct, FieldVariables* fi
                     {
                         double nx = myPointStruct[ii].x_normal[i];
                         double ny = myPointStruct[ii].y_normal[i];
-                        decompose_velocity(vn, vt, nx, ny,
-                                           &field[ii].u[i], &field[ii].v[i]);
+                        decompose_velocity(vn, vt, nx, ny, &field[ii].u[i], &field[ii].v[i]);
+                        decompose_velocity(vn, vt, nx, ny, &myPointStruct[ii].node_bc[i].u, &myPointStruct[ii].node_bc[i].v);
                         if (parameters.dimension == 3)
                             field[ii].w[i] = 0.0;
                     }
@@ -433,8 +431,8 @@ void apply_boundary_conditions(PointStructure* myPointStruct, FieldVariables* fi
                         {
                             double nx = myPointStruct[ii].x_normal[i];
                             double ny = myPointStruct[ii].y_normal[i];
-                            decompose_velocity(vn, vt, nx, ny,
-                                               &field[ii].u[i], &field[ii].v[i]);
+                            decompose_velocity(vn, vt, nx, ny, &field[ii].u[i], &field[ii].v[i]);
+                            decompose_velocity(vn, vt, nx, ny, &field[ii].u[i], &field[ii].v[i]);
                             if (parameters.dimension == 3)
                                 field[ii].w[i] = 0.0;
                         }

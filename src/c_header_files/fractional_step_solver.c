@@ -10,7 +10,6 @@
 #include <assert.h>
 
 #include "structures.h"
-#include "mat_lib.h"
 #include "functions.h"
 
 
@@ -147,16 +146,18 @@ void FS_calculate_intermediate_velocity_vectorised_2d(PointStructure* myPointStr
         field->u_new[i] = field->u[i] - parameters.dt * (field->u[i] * field->dudx[i] + field->v[i] * field->dudy[i] - parameters.nu *field->lapu[i]);
         field->v_new[i] = field->v[i] - parameters.dt * (field->u[i] * field->dvdx[i] + field->v[i] * field->dvdy[i] - parameters.nu *field->lapv[i]);
     }
-    /* ---- ENFORCE BOUNDARY CONDITIONS ON u* ---- */
+    #pragma acc data present(field, myPointStruct, parameters)
+    {
+        multiply_sparse_matrix_vector_vectorised_gpu_async(myPointStruct->Dx, field->p_old, field->dpdx, myPointStruct->cloud_index, num_nodes, num_cloud_points, 1);
+        multiply_sparse_matrix_vector_vectorised_gpu_async(myPointStruct->Dy, field->p_old, field->dpdy, myPointStruct->cloud_index, num_nodes, num_cloud_points, 2);
+        # pragma acc wait(1,2)
+    }
     # pragma acc parallel loop gang vector default(present)
     for (int i = 0; i < myPointStruct->num_nodes; i++){
-        if (myPointStruct->boundary_tag[i] && !myPointStruct->corner_tag[i]){
-            if (myPointStruct->node_bc[i].type == BC_VELOCITY_INLET 
-                    || myPointStruct->node_bc[i].type == BC_WALL 
-                    || myPointStruct->node_bc[i].type == BC_VELOCITY_OUTLET){
-                field->u_new[i] = myPointStruct->node_bc[i].u;
-                field->v_new[i] = myPointStruct->node_bc[i].v;
-            }
+        if (myPointStruct->boundary_tag[i] && !myPointStruct->corner_tag[i] 
+                        && !myPointStruct->node_bc[i].type == BC_PRESSURE_OUTLET){
+            field->u_new[i] = field->u[i] + parameters.dt * (field->dpdx[i]);
+            field->v_new[i] = field->v[i] + parameters.dt * (field->dpdy[i]);
         }
     }
 }
@@ -183,6 +184,7 @@ void FS_calculate_mass_residual_vectorised(PointStructure* myPointStruct, FieldV
             field->source[i] = myPointStruct->node_bc[i].p;
         else
             field->source[i] = parameters.rho*((field->u_new[i] - field->u[i])*myPointStruct->x_normal[i] + (field->v_new[i] - field->v[i])*myPointStruct->y_normal[i] + (field->w_new[i] - field->w[i])*myPointStruct->z_normal[i])/parameters.dt;
+            // field->source[i] = 0;
     }
 }
 
@@ -258,10 +260,16 @@ void FS_relaxation_vectorised_Jacobi(PointStructure* mypointstruct, FieldVariabl
             field->p[i] = parameters.omega * (field->source[i] - sum) / mypointstruct->lap_Poison[i*n] 
                             + (1.0 - parameters.omega) * field->p_old[i];
         }
-        #pragma acc parallel loop present(field->p[:N], field->p_old[:N])
-        for (int i = 0; i < N; i++) {
-            field->p_old[i] = field->p[i];
-        }
+        // double mean = 0;
+        // #pragma acc parallel loop present(field->p[:N], field->p_old[:N])
+        // for (int i = 0; i < N; i++) {
+        //     mean += field->p[i];
+        // }
+        // mean = mean/N;
+        // #pragma acc parallel loop present(field->p[:N], field->p_old[:N])
+        // for (int i = 0; i < N; i++) {
+        //     field->p_old[i] = field->p[i]-mean;
+        // }
     }
 }
 
@@ -407,7 +415,7 @@ void FS_update_velocity_vectorised(PointStructure* myPointStruct, FieldVariables
         if (!myPointStruct->corner_tag[i])
             sum += parameters.rho*fabs(field->dpdx[i]+field->dpdy[i]+field->dpdz[i]);
 
-    // printf("Mass residual: %e\n", (sum)/myPointStruct->num_nodes);
+    printf("Mass residual: %e\n", (sum)/myPointStruct->num_nodes);
 }
 
 void FS_update_velocity_vectorised_2d(PointStructure* myPointStruct, FieldVariables* field)
@@ -457,8 +465,41 @@ void FS_update_velocity_vectorised_2d(PointStructure* myPointStruct, FieldVariab
         if (!myPointStruct->corner_tag[i])
             sum += parameters.rho*fabs(field->dpdx[i]+field->dpdy[i]);
 
-    // printf("Mass residual: %e\n", sum/num_nodes);
+    printf("Mass residual: %e\n", sum/num_nodes);
 }
+
+/* ============================================================
+   Meshless Laplacian operator identical to Jacobi/GS
+   ============================================================ */
+static void apply_poisson_operator(
+        PointStructure *ps,
+        const double *x,
+        double *Ax)
+{
+    int N = ps->num_nodes;
+    int n = ps->num_cloud_points;
+
+    #pragma acc parallel loop present(ps->lap_Poison[:N*n], \
+                                      ps->cloud_index[:N*n], \
+                                      x[:N], Ax[:N])
+    for (int i = 0; i < N; i++) {
+
+        double sum = 0.0;
+
+        /* OFF-DIAGONALS ONLY (match Jacobi/GS) */
+        for (int j = 1; j < n; j++) {
+            int idx = i*n + j;
+            sum += ps->lap_Poison[idx] *
+                   x[ps->cloud_index[idx]];
+        }
+
+        /* FULL operator */
+        Ax[i] = ps->lap_Poison[i*n] * x[i] + sum;
+    }
+}
+
+#define BICGSTAB_DEBUG 0
+
 
 void FS_relaxation_vectorised_BiCGStab(PointStructure* ps,
                                       const double* b,
@@ -479,137 +520,171 @@ void FS_relaxation_vectorised_BiCGStab(PointStructure* ps,
     double *z  = malloc(N * sizeof(double));
     double *y  = malloc(N * sizeof(double));
 
-    #pragma acc data copyin(b[0:N], ps->lap_Poison[0:N*n], ps->cloud_index[0:N*n]) \
+    // Check if a Dirichlet pressure BC exists — if so, nullspace is already fixed
+    int has_pressure_bc = 0;
+    for (int i = 0; i < N; i++) {
+        if (ps->node_bc[i].type == BC_PRESSURE_OUTLET) {
+            has_pressure_bc = 1;
+            break;
+        }
+    }
+
+    #pragma acc data present(ps->lap_Poison[0:N*n], ps->cloud_index[0:N*n], \
+                             ps->boundary_tag[0:N]) \
+                     copyin(b[0:N]) \
                      copy(x[0:N]) \
                      create(diag_inv[0:N], r[0:N], r0[0:N], p[0:N], v[0:N], \
                             s[0:N], t[0:N], z[0:N], y[0:N])
     {
         /* Diagonal inverse (Jacobi preconditioner) */
-        #pragma acc parallel loop
+        #pragma acc parallel loop present(diag_inv, ps->lap_Poison)
         for (int i = 0; i < N; i++) {
             double diag = ps->lap_Poison[i*n];
-            if (fabs(diag) < 1e-14) diag = 1.0;
-            diag_inv[i] = 1.0 / diag;
+            diag_inv[i] = (fabs(diag) < 1e-14) ? 1.0 : 1.0 / diag;
         }
 
         /* Initial residual r = b - A*x */
-        #pragma acc parallel loop
+        apply_poisson_operator(ps, x, v);
+
+        #pragma acc parallel loop present(r, r0, p, v, b)
         for (int i = 0; i < N; i++) {
-            double sum = 0.0;
-            for (int j = 0; j < n; j++) {
-                int col = ps->cloud_index[i*n + j];
-                sum += ps->lap_Poison[i*n + j] * x[col];
-            }
-            r[i]  = b[i] - sum;
+            r[i]  = b[i] - v[i];
             r0[i] = r[i];
             p[i]  = 0.0;
             v[i]  = 0.0;
         }
 
+        double norm_b = 0.0;
+        #pragma acc parallel loop reduction(+:norm_b) present(b)
+        for (int i = 0; i < N; i++)
+            norm_b += b[i] * b[i];
+        norm_b = sqrt(norm_b);
+        if (norm_b < 1e-14) norm_b = 1.0; // guard against zero RHS
+
         double norm_r0 = 0.0;
-        #pragma acc parallel loop reduction(+:norm_r0)
-        for (int i = 0; i < N; i++) {
+        #pragma acc parallel loop reduction(+:norm_r0) present(r)
+        for (int i = 0; i < N; i++)
             norm_r0 += r[i] * r[i];
-        }
         norm_r0 = sqrt(norm_r0);
 
-        double rho = 1.0, alpha = 1.0, omega = 1.0;
+        double rho = 1.0, alpha = 1.0, omega_bicg = 1.0;
 
         for (int iter = 0; iter < max_iter; iter++) {
 
             double rho_new = 0.0;
-            #pragma acc parallel loop reduction(+:rho_new)
-            for (int i = 0; i < N; i++) {
+            #pragma acc parallel loop reduction(+:rho_new) present(r0, r)
+            for (int i = 0; i < N; i++)
                 rho_new += r0[i] * r[i];
+
+            if (fabs(rho_new) < 1e-30) {
+                // Breakdown — restart with current residual as r0
+                #pragma acc parallel loop present(r0, r)
+                for (int i = 0; i < N; i++)
+                    r0[i] = r[i];
+                rho_new = norm_r0 * norm_r0;
+                if (fabs(rho_new) < 1e-30) break;
             }
 
-            if (fabs(rho_new) < 1e-30) break;
+            double beta = (rho_new / rho) * (alpha / omega_bicg);
 
-            double beta = (rho_new / rho) * (alpha / omega);
+            #pragma acc parallel loop present(p, r, v)
+            for (int i = 0; i < N; i++)
+                p[i] = r[i] + beta * (p[i] - omega_bicg * v[i]);
 
-            #pragma acc parallel loop
-            for (int i = 0; i < N; i++) {
-                p[i] = r[i] + beta * (p[i] - omega * v[i]);
-            }
-
-            #pragma acc parallel loop
-            for (int i = 0; i < N; i++) {
+            /* Precondition: z = M^-1 * p */
+            #pragma acc parallel loop present(z, diag_inv, p)
+            for (int i = 0; i < N; i++)
                 z[i] = diag_inv[i] * p[i];
-            }
 
             /* v = A*z */
-            #pragma acc parallel loop
-            for (int i = 0; i < N; i++) {
-                double sum = 0.0;
-                for (int j = 0; j < n; j++) {
-                    int col = ps->cloud_index[i*n + j];
-                    sum += ps->lap_Poison[i*n + j] * z[col];
-                }
-                v[i] = sum;
-            }
+            apply_poisson_operator(ps, z, v);
 
             double r0v = 0.0;
-            #pragma acc parallel loop reduction(+:r0v)
-            for (int i = 0; i < N; i++) {
+            #pragma acc parallel loop reduction(+:r0v) present(r0, v)
+            for (int i = 0; i < N; i++)
                 r0v += r0[i] * v[i];
-            }
 
             if (fabs(r0v) < 1e-30) break;
 
             alpha = rho_new / r0v;
 
-            #pragma acc parallel loop
-            for (int i = 0; i < N; i++) {
+            #pragma acc parallel loop present(s, r, v)
+            for (int i = 0; i < N; i++)
                 s[i] = r[i] - alpha * v[i];
+
+            /* Early exit if s is small enough */
+            double norm_s = 0.0;
+            #pragma acc parallel loop reduction(+:norm_s) present(s)
+            for (int i = 0; i < N; i++)
+                norm_s += s[i] * s[i];
+            norm_s = sqrt(norm_s);
+
+            if (norm_s / norm_r0 < tol) {
+                #pragma acc parallel loop present(x, z)
+                for (int i = 0; i < N; i++)
+                    x[i] += alpha * z[i];
+                break;
             }
 
-            #pragma acc parallel loop
-            for (int i = 0; i < N; i++) {
+            /* Precondition: y = M^-1 * s */
+            #pragma acc parallel loop present(y, diag_inv, s)
+            for (int i = 0; i < N; i++)
                 y[i] = diag_inv[i] * s[i];
-            }
 
             /* t = A*y */
-            #pragma acc parallel loop
-            for (int i = 0; i < N; i++) {
-                double sum = 0.0;
-                for (int j = 0; j < n; j++) {
-                    int col = ps->cloud_index[i*n + j];
-                    sum += ps->lap_Poison[i*n + j] * y[col];
-                }
-                t[i] = sum;
-            }
+            apply_poisson_operator(ps, y, t);
 
             double ts = 0.0, tt = 0.0;
-            #pragma acc parallel loop reduction(+:ts,tt)
+            #pragma acc parallel loop reduction(+:ts, tt) present(t, s)
             for (int i = 0; i < N; i++) {
                 ts += t[i] * s[i];
                 tt += t[i] * t[i];
             }
 
             if (fabs(tt) < 1e-30) break;
+            omega_bicg = ts / tt;
 
-            omega = ts / tt;
+            #pragma acc parallel loop present(x, z, y)
+            for (int i = 0; i < N; i++)
+                x[i] += alpha * z[i] + omega_bicg * y[i];
 
-            #pragma acc parallel loop
-            for (int i = 0; i < N; i++) {
-                x[i] += alpha * z[i] + omega * y[i];
-            }
-
-            #pragma acc parallel loop
-            for (int i = 0; i < N; i++) {
-                r[i] = s[i] - omega * t[i];
-            }
+            #pragma acc parallel loop present(r, s, t)
+            for (int i = 0; i < N; i++)
+                r[i] = s[i] - omega_bicg * t[i];
 
             double norm_r = 0.0;
-            #pragma acc parallel loop reduction(+:norm_r)
-            for (int i = 0; i < N; i++) {
+            #pragma acc parallel loop reduction(+:norm_r) present(r)
+            for (int i = 0; i < N; i++)
                 norm_r += r[i] * r[i];
-            }
             norm_r = sqrt(norm_r);
 
+            #if BICGSTAB_DEBUG
+            if (iter % 40 == 0)
+                printf("BiCGStab iter %d  rel_res = %.6e  alpha=%.4e  omega=%.4e\n",
+                        iter, norm_r/norm_b, alpha, omega_bicg);
+            if (!isfinite(norm_r)) {
+                printf("BiCGStab: NaN detected at iter %d, aborting.\n", iter);
+                break;
+            }
+            #endif
+
             if (norm_r / norm_r0 < tol) break;
+            if (fabs(omega_bicg) < 1e-30) break; // stagnation
 
             rho = rho_new;
+        }
+
+        if (!has_pressure_bc) {
+            double mean = 0.0;
+            #pragma acc parallel loop reduction(+:mean) present(x)
+            for (int i = 0; i < N; i++)
+                mean += x[i];
+            
+            mean /= (double)N;
+            
+            #pragma acc parallel loop present(x)
+            for (int i = 0; i < N; i++)
+                x[i] -= mean;
         }
     }
 

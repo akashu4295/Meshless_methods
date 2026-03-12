@@ -11,7 +11,6 @@
 #include <assert.h>
 
 #include "structures.h"
-#include "mat_lib.h"
 #include "functions.h"
 
 /////////////////////////////////////////////////////////////////////////////

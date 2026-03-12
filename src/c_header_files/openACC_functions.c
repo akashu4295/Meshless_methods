@@ -3,7 +3,6 @@
 
 #include "structures.h"
 #include "functions.h"
-#include "mat_lib.h"
 #include <time.h>
 #include <math.h>
 #include <stdlib.h>

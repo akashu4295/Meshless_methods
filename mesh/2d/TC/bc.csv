@@ -1,0 +1,4 @@
+innerwall,wall,v_n=0,v_t=1
+outerwall,wall,v_n=0,v_t=0
+fluid,interior
+

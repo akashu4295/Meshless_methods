@@ -115,11 +115,11 @@ BASE_PARAMETERS = {
     "num_time_steps": 10,
     "write_interval": 50,
     "Re": 10,
+    "num_relax": 50,
 }
 
 MULTIGRID_PARAMETERS = {
     "num_vcycles": 10,
-    "num_relax": 50,
 }
 
 IMPLICIT_PARAMETERS = {
@@ -129,14 +129,105 @@ IMPLICIT_PARAMETERS = {
 
 # Additional fixed parameters
 FIXED_PARAMETERS = {
-    "neumann_flag_boundary": "1",
-    "facRe": "1",
-    "facdt": "1",
 }
 
 RESTART_PARAMETERS = {
     "restart": "0",
     "restart_filename": "Solution.csv",
+}
+
+PARAMETER_LABELS = {
+    # BASE_PARAMETERS
+    "domain_dimensions":        "Domain Dimensions",
+    "poly_deg":                 "Polynomial Degree",
+    "phs_deg":                  "PHS Degree",
+    "cloud_size_multiplier":    "Cloud Size Multiplier",
+    "test_derivative":          "Test Derivative",
+    "courant_number":           "Courant Number",
+    "steady_tolerance":         "Steady Tolerance",
+    "poisson_solver_tolerance": "Poisson Solver Tolerance",
+    "sor_parameter":            "SOR Parameter",
+    "time_step":                "Time Step",
+    "num_time_steps":           "Number of Time Steps",
+    "write_interval":           "Write Interval",
+    "Re":                       "Reynolds Number",
+    # MULTIGRID_PARAMETERS
+    "num_vcycles":              "V-Cycles",
+    "num_relax":                "Relaxation Steps",
+    # IMPLICIT_PARAMETERS
+    "iter_momentum":            "Momentum Iterations",
+    "iter_timple":              "Time-Implicit Iterations",
+}
+
+PARAMETER_TOOLTIPS = {
+    "domain_dimensions": (
+        "Number of spatial dimensions.",
+        "Suggested: 2 (2D) or 3 (3D)."
+    ),
+    "poly_deg": (
+        "Degree of the polynomial basis used in the RBF-FD stencil.",
+        "Suggested: 2-5. Higher = more accurate but costlier."
+    ),
+    "phs_deg": (
+        "Degree of the Polyharmonic Spline (PHS) kernel.",
+        "Suggested: odd values (1, 3, 5). Must satisfy phs_deg > poly_deg - 1."
+    ),
+    "cloud_size_multiplier": (
+        "Scales the number of neighbours in each RBF-FD stencil.",
+        "Suggested: 2-4. Higher = denser stencil, more stable but slower."
+    ),
+    "test_derivative": (
+        "Enable derivative accuracy test before solving.",
+        "Suggested: 0 (off) for production runs, 1 (on) for debugging."
+    ),
+    "courant_number": (
+        "CFL Courant number controlling the explicit time step size.",
+        "Suggested: 0.1-0.5. Lower = more stable, smaller steps."
+    ),
+    "steady_tolerance": (
+        "Convergence tolerance for steady-state detection.",
+        "Suggested: 1e-6 to 1e-10."
+    ),
+    "poisson_solver_tolerance": (
+        "Convergence tolerance for the Poisson pressure solver.",
+        "Suggested: 1e-6 to 1e-10."
+    ),
+    "sor_parameter": (
+        "Successive Over-Relaxation (SOR) factor for the Poisson solver.",
+        "Suggested: 0.1-1.9. Values near 1.0 are safest."
+    ),
+    "time_step": (
+        "Fixed time step size (used in implicit mode).",
+        "Suggested: problem-dependent. Start with 0.01-0.1."
+    ),
+    "num_time_steps": (
+        "Total number of time steps to run.",
+        "Suggested: enough to reach steady state or desired end time."
+    ),
+    "write_interval": (
+        "Write solution output every N time steps.",
+        "Suggested: 10-100. Lower = more output files."
+    ),
+    "Re": (
+        "Reynolds number controlling the flow regime.",
+        "Suggested: 1-100 for laminar, higher for turbulent (use carefully)."
+    ),
+    "num_vcycles": (
+        "Number of multigrid V-cycles per Poisson solve.",
+        "Suggested: 5-20. More cycles = more accurate but slower."
+    ),
+    "num_relax": (
+        "Number of relaxation (smoothing) steps per multigrid level.",
+        "Suggested: 10-100."
+    ),
+    "iter_momentum": (
+        "Inner iterations for the implicit momentum equation.",
+        "Suggested: 3-10."
+    ),
+    "iter_timple": (
+        "Outer time-implicit coupling iterations per time step.",
+        "Suggested: 1-5."
+    ),
 }
 # ============================================================
 # Solver Method Options
@@ -204,7 +295,7 @@ LOG_WINDOW_HEIGHT = 250
 CONVERGENCE_UPDATE_INTERVAL = 2.0
 
 # Auto-scroll threshold for log window
-LOG_SCROLL_THRESHOLD = 5
+LOG_SCROLL_THRESHOLD = 10
 
 # ============================================================
 # Font Configuration

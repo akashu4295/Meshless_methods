@@ -3,7 +3,6 @@
 #include "structures.h"
 #include "functions.h"
 #include "kdtree.h"
-#include "mat_lib.h"
 #include <time.h>
 #include <math.h>
 #include <stdlib.h>
@@ -238,13 +237,13 @@ void laplacian_matrix_vectorised(PointStructure* myPointStruct, double* lap, int
                     dtempx *= pow(pt1[1], myPointStruct->pow_y[j]);
                     dtempx *= pow(pt1[2], myPointStruct->pow_z[j]);
                 }
-                else if (myPointStruct->pow_y[j] > 1) {  
+                if (myPointStruct->pow_y[j] > 1) {  
                     dtempy =  myPointStruct->pow_y[j] * (myPointStruct->pow_y[j] - 1) *
                               pow(pt1[1], myPointStruct->pow_y[j] - 2);
                     dtempy *= pow(pt1[0], myPointStruct->pow_x[j]);
                     dtempy *= pow(pt1[2], myPointStruct->pow_z[j]);
                 }
-                else if (myPointStruct->pow_z[j] > 1) {  
+                if (myPointStruct->pow_z[j] > 1) {  
                     dtempz =  myPointStruct->pow_z[j] * (myPointStruct->pow_z[j] - 1) *
                               pow(pt1[2], myPointStruct->pow_z[j] - 2);
                     dtempz *= pow(pt1[0], myPointStruct->pow_x[j]);
@@ -263,17 +262,28 @@ void laplacian_matrix_vectorised(PointStructure* myPointStruct, double* lap, int
             pt1[2] = myPointStruct->z[cloud[i]] - seed_pt[2];
             for (int j = 0; j < n; j++) {        
                 dtempx = 0; dtempy = 0;
+                // if (myPointStruct->pow_x[j] > 1) {  
+                //     dtempx =  myPointStruct->pow_x[j] * (myPointStruct->pow_x[j] - 1) *
+                //               pow(pt1[0], myPointStruct->pow_x[j] - 2);
+                //     dtempx *= pow(pt1[1], myPointStruct->pow_y[j]);
+                // }
+                // else if (myPointStruct->pow_y[j] > 1) {  
+                //     dtempy =  myPointStruct->pow_y[j] * (myPointStruct->pow_y[j] - 1) *
+                //               pow(pt1[1], myPointStruct->pow_y[j] - 2);
+                //     dtempy *= pow(pt1[0], myPointStruct->pow_x[j]);
+                // }
                 if (myPointStruct->pow_x[j] > 1) {  
-                    dtempx =  myPointStruct->pow_x[j] * (myPointStruct->pow_x[j] - 1) *
-                              pow(pt1[0], myPointStruct->pow_x[j] - 2);
-                    dtempx *= pow(pt1[1], myPointStruct->pow_y[j]);
+                    dtempx = myPointStruct->pow_x[j] * (myPointStruct->pow_x[j] - 1) *
+                            pow(pt1[0], myPointStruct->pow_x[j] - 2) *
+                            pow(pt1[1], myPointStruct->pow_y[j]);
                 }
-                else if (myPointStruct->pow_y[j] > 1) {  
-                    dtempy =  myPointStruct->pow_y[j] * (myPointStruct->pow_y[j] - 1) *
-                              pow(pt1[1], myPointStruct->pow_y[j] - 2);
-                    dtempy *= pow(pt1[0], myPointStruct->pow_x[j]);
+                if (myPointStruct->pow_y[j] > 1) {  // NOT else if
+                    dtempy = myPointStruct->pow_y[j] * (myPointStruct->pow_y[j] - 1) *
+                            pow(pt1[1], myPointStruct->pow_y[j] - 2) *
+                            pow(pt1[0], myPointStruct->pow_x[j]);
                 }
-                lap[i*mpn +j + m] = dtempx + dtempy;
+                lap[i*mpn + j + m] = dtempx + dtempy;
+                // lap[i*mpn +j + m] = dtempx + dtempy;
                 lap[(j + m)*mpn +i] = lap[i*mpn +j + m];
             }
         }

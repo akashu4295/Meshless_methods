@@ -3,7 +3,6 @@
 
 #include "structures.h"
 #include "functions.h"
-#include "mat_lib.h"
 #include "kdtree.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -269,7 +268,7 @@ void read_flow_parameters(const char *filename)
                 printf("PARAMETERS: %s = %hd\n", key, parameters.energy_equation);
         }
         else
-            printf("⚠️  Unknown parameter ignored: %s\n", key);
+            printf("!! Unknown parameter ignored: %s\n", key);
     }
 
     fclose(file);
@@ -513,7 +512,7 @@ void read_PointStructure(PointStructure* myPointStruct)
                     myPointStruct->x_normal[e_node2 - 1] += -dy;
                     myPointStruct->y_normal[e_node2 - 1] +=  dx;
                 }
-                else   // e_type == 15 → point (corner)
+                else   // e_type == 15 -> point (corner)
                 {
                     fscanf(file, "%d", &itemp);
                     myPointStruct->corner_tag[itemp - 1]   = true;
@@ -530,7 +529,7 @@ void read_PointStructure(PointStructure* myPointStruct)
             }
         }
     }
-    else   // ========================== 3D ==========================
+    else   // 3D 
     {
         for (int ie = 0; ie < myPointStruct->num_elem; ie++)
         {
@@ -678,7 +677,7 @@ void read_PointStructure(PointStructure* myPointStruct)
                         myPointStruct->z_normal[e_node4 - 1] += nz2 * 0.5;
                     }
                 }
-                else if (e_type == 1)   // line → corners
+                else if (e_type == 1)   // line -> corners
                 {
                     fscanf(file, "%d %d", &e_node1, &e_node2);
                     myPointStruct->corner_tag[e_node1 - 1] = true;
@@ -719,6 +718,7 @@ void read_PointStructure(PointStructure* myPointStruct)
     }
     // Remove first num_corners nodes
     int remove_count = myPointStruct->num_corners;
+    int new_size = myPointStruct->num_nodes - myPointStruct->num_corners;
 
     if ((remove_count != 0) && (myPointStruct->num_boundary_types == 0)) {
         printf("Removing %d corner nodes from the mesh\n", remove_count);
@@ -734,7 +734,6 @@ void read_PointStructure(PointStructure* myPointStruct)
         memmove(myPointStruct->node_bc, myPointStruct->node_bc + remove_count, (myPointStruct->num_nodes - remove_count) * sizeof(BCValue));
 
         // Reallocate memory to shrink the array
-        int new_size = myPointStruct->num_nodes - remove_count;
         myPointStruct->x = (double*)realloc(myPointStruct->x, new_size * sizeof(double));
         myPointStruct->y = (double*)realloc(myPointStruct->y, new_size * sizeof(double));
         myPointStruct->z = (double*)realloc(myPointStruct->z, new_size * sizeof(double));
@@ -762,8 +761,6 @@ void read_PointStructure(PointStructure* myPointStruct)
         }
     }
     else if ((myPointStruct->num_corners != 0) ) {
-
-        int new_size = myPointStruct->num_nodes - myPointStruct->num_corners;
 
         // Allocate temporary arrays for non-corner nodes
         double *temp_x = (double*)malloc(new_size * sizeof(double));
@@ -834,6 +831,9 @@ void read_PointStructure(PointStructure* myPointStruct)
         for (int i = 0; i < new_size; i++) {
             myPointStruct->point_index[i] = i;
         }
+    }
+    for(int i = 0; i<new_size; i++){
+        myPointStruct->point_index[i] = i;
     }
     printf("No of nodes = %d \nNo of elements = %d \n", myPointStruct->num_nodes, myPointStruct->num_elem);
 }
@@ -1075,6 +1075,7 @@ void rcm_reordering_with_boundarynodes(PointStructure* myPointstruct) {
         temp_y[i] = myPointstruct->y[queue1[i]];
         temp_z[i] = myPointstruct->z[queue1[i]];
         // Reorder the cloud index array based on queue2 mapping
+        // temp_cloud_index[i*n] = queue1[i];
         for (int j = 0; j < n; j++) {
             temp_cloud_index[i*n +j] = queue2[myPointstruct->cloud_index[queue1[i]*n +j]];
         }
@@ -1118,6 +1119,7 @@ void rcm_reordering_with_boundarynodes(PointStructure* myPointstruct) {
     free(temp_cloud_index);
     free(temp_node_bc);
 }
+
 
 void create_prolongation_and_restriction_matrices(PointStructure* myPointStruct, short num_levels){  
     printf("Identifying prolongation and restriction points\n");
