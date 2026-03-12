@@ -129,8 +129,6 @@ IMPLICIT_PARAMETERS = {
 
 # Additional fixed parameters
 FIXED_PARAMETERS = {
-    "facRe": "1",
-    "facdt": "1",
 }
 
 RESTART_PARAMETERS = {
