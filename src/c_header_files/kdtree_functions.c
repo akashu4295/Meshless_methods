@@ -1,9 +1,8 @@
+// Author :  Akash Unnikrishnan and Prof. Surya Pratap Vanka
+// Affiliation : Indian Institute of Technology Gandhinagar and University of Illinois at Urbana Champaign
+
 #include "structures.h"
 #include "kdtree.h"
-#include <math.h>
-#include <assert.h>
-#include <stdlib.h>
-#include <stdbool.h>
 #include <float.h>
 #include <stdio.h>
 

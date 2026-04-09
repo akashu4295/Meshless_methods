@@ -2,15 +2,6 @@
 // Compressible Navier-Stokes Solver for Low Mach Number Flows
 // Affiliation: Indian Institute of Technology Gandhinagar and University of Illinois at Urbana Champaign
 
-#include <time.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include <string.h>
-#include <assert.h>
-
-#include "structures.h"
 #include "functions.h"
 
 /////////////////////////////////////////////////////////////////////////////

@@ -1,15 +1,8 @@
 // Author :  Akash Unnikrishnan and Prof. Surya Pratap Vanka
 // Affiliation : Indian Institute of Technology Gandhinagar and University of Illinois at Urbana Champaign
 
-#include "structures.h"
 #include "functions.h"
 #include "kdtree.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <math.h>
-#include <stdbool.h>
-#include <ctype.h>
 
 // Safe guards for fscanf on reading 1 and 2 items
 #define SAFE_SCAN1(x, msg) if ((x) != 1) { puts(msg); exit(1); }

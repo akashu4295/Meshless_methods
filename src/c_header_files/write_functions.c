@@ -2,9 +2,6 @@
 // Affiliation : Indian Institute of Technology Gandhinagar and University of Illinois at Urbana Champaign
 // Functions used to write the output to files
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include "functions.h"
 
 //////////////////////////////////////////////////////////////////////

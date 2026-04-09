@@ -1,12 +1,7 @@
 // Author :  Akash Unnikrishnan and Prof. Surya Pratap Vanka
 // Affiliation : Indian Institute of Technology Gandhinagar and University of Illinois at Urbana Champaign
 
-#include "structures.h"
 #include "functions.h"
-#include <time.h>
-#include <math.h>
-#include <stdlib.h>
-#include <stdio.h>
 
 // Function definitions
 void copyin_parameters_to_gpu(){

@@ -1,13 +1,7 @@
 // Author :  Akash Unnikrishnan and Prof. Surya Pratap Vanka
 // Affiliation : Indian Institute of Technology Gandhinagar and University of Illinois at Urbana Champaign
-#include "structures.h"
 #include "functions.h"
 #include "kdtree.h"
-#include <time.h>
-#include <math.h>
-#include <stdlib.h>
-#include <stdio.h>
-
 
 // Function definitions
 double calculate_phs_rbf(double *pt1, double *pt2, int phs, int dimension) {

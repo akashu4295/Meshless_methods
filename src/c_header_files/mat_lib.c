@@ -1,13 +1,7 @@
 // Author : Akash Unnikrishnan
 // Clean SIMD + GPU safe version
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include <stddef.h>
-
 #include "functions.h"
-#include "structures.h"
 
 #define ALIGNMENT 64
 #define PIVOT_TOL 1e-14   /* TODO: expose as user parameter */

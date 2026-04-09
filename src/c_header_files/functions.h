@@ -8,9 +8,16 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-// #include <math.h>
+#include <stddef.h>
+#include <time.h>
+#include <math.h>
 #include <string.h>
-// #include <assert.h>
+#include <string.h>
+#include <assert.h>
+#include <ctype.h>
+#include <float.h>
+#include <sys/stat.h>
+
 #include "structures.h"
 
 // Mesh Function declarations

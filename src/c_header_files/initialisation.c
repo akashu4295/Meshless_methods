@@ -1,11 +1,8 @@
-#include "structures.h"
+// Author :  Akash Unnikrishnan and Prof. Surya Pratap Vanka
+// Affiliation : Indian Institute of Technology Gandhinagar and University of Illinois at Urbana Champaign
+
 #include "functions.h"
 #include "kdtree.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <math.h>
-#include <ctype.h>
 
 /* trim whitespace in-place */
 static char* trim(char* s){
