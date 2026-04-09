@@ -16,14 +16,14 @@
 // Mesh Function declarations
 void read_PointStructure(PointStructure* myPointStruct);
 void read_flow_parameters(const char *filename);
-void calculate_parameters(PointStructure* myPointStruct);
 void correct_normal_directions(PointStructure* myPointStruct);
 void read_grid_filenames(PointStructure** myPointStruct, char* filename, short* num_levels);
 void read_complete_mesh_data(PointStructure* myPointStruct, short num_levels);   
 void create_restriction_matrix(PointStructure* myPointStruct, PointStructure* myPointStruct1);
 void create_prolongation_matrix(PointStructure* myPointStruct, PointStructure* myPointStruct1);
-void rcm_reordering(PointStructure* myPointStruct);
+void rcm_reordering_with_boundarynodes(PointStructure* myPointStruct);
 double calculate_dt(PointStructure* myPointStruct);
+void calculate_point_spacings(PointStructure* myPointStruct);
 
 // Initialization Function declarations
 BCType parse_bc_type(const char* s);
@@ -71,9 +71,7 @@ void write_cloud_index(PointStructure* myPointStruct, char* filename);
 void write_prolongation_and_restriction_points(PointStructure* myPointStruct, char* filename);
 void write_test_files(double* f, double* fx, double* fy, double* fz, double* lapf, double* fxx, double* fyy, double* fzz, int num_nodes, char* folder1);
 void write_processed_grid_data(PointStructure* myPointStruct, int num_levels);
-void make_directory(const char* name);
-int write_vtk(char *gmsh_filename, FieldVariables *field, PointStructure* myPS);
-int write_vtk_test(char *gmsh_filename, FieldVariables *field, PointStructure* myPS) ;
+int write_vtk(char *gmsh_filename, FieldVariables *field, PointStructure* myPS, char *sol_filename);
 void check_restart_file(PointStructure* myPointStruct, FieldVariables* field);
 
 

@@ -144,7 +144,6 @@ void update_velocity_implicit_vectorised_2d(PointStructure* myPointStruct, Field
         multiply_sparse_matrix_vector_vectorised_gpu_async(myPointStruct->Dy, field->pprime, field->dpdy, myPointStruct->cloud_index, num_nodes, num_cloud_points, 2);
     }
     #pragma acc wait(1,2,3)
-    int count = 0;
     #pragma acc parallel loop gang vector present(field, parameters, myPointStruct)
     for (int i = 0; i < num_nodes; i++) {
         if (myPointStruct->corner_tag[i]) continue;
@@ -234,6 +233,19 @@ void update_boundary_pressure_vectorised_2d(PointStructure* myPointStruct, Field
             }
         }
     }
+     # pragma acc data present(myPointStruct, field, parameters)
+    {
+        multiply_sparse_matrix_vector_vectorised_gpu_async(myPointStruct->Dx, field->u, field->dpdx, myPointStruct->cloud_index, myPointStruct->num_nodes, myPointStruct->num_cloud_points, 4);
+        multiply_sparse_matrix_vector_vectorised_gpu_async(myPointStruct->Dy, field->v, field->dpdy, myPointStruct->cloud_index, myPointStruct->num_nodes, myPointStruct->num_cloud_points, 5);
+    }
+    # pragma acc wait(4,5)
+    double sum = 0.0;
+    # pragma acc parallel loop gang vector default(present) reduction(+:sum)
+    for (int i = 0; i < myPointStruct->num_nodes; i++)
+        if (!myPointStruct->corner_tag[i])
+            sum += parameters.rho*fabs(field->dpdx[i]+field->dpdy[i]);
+
+    printf("Mass residual: %e\n", (sum)/myPointStruct->num_nodes);
 }
 
 
@@ -378,7 +390,6 @@ void calculate_mass_residual_implicit_vectorised(PointStructure* myPointStruct, 
         }
     }
     
-    // printf("Mass residual: %e\n", sum/num_nodes); 
 }
 
 void update_velocity_implicit_vectorised(PointStructure* myPointStruct, FieldVariables* field) {
@@ -443,6 +454,20 @@ void update_velocity_implicit_vectorised(PointStructure* myPointStruct, FieldVar
         }
         // Wall and inlet boundaries: velocity already set in intermediate step, don't touch
     }
+    # pragma acc data present(myPointStruct, field, parameters)
+    {
+        multiply_sparse_matrix_vector_vectorised_gpu_async(myPointStruct->Dx, field->u, field->dpdx, myPointStruct->cloud_index, myPointStruct->num_nodes, myPointStruct->num_cloud_points, 4);
+        multiply_sparse_matrix_vector_vectorised_gpu_async(myPointStruct->Dy, field->v, field->dpdy, myPointStruct->cloud_index, myPointStruct->num_nodes, myPointStruct->num_cloud_points, 5);
+        multiply_sparse_matrix_vector_vectorised_gpu_async(myPointStruct->Dz, field->w, field->dpdz, myPointStruct->cloud_index, myPointStruct->num_nodes, myPointStruct->num_cloud_points, 6);
+    }
+    # pragma acc wait(4,5,6)
+    double sum = 0.0;
+    # pragma acc parallel loop gang vector default(present) reduction(+:sum)
+    for (int i = 0; i < myPointStruct->num_nodes; i++)
+        if (!myPointStruct->corner_tag[i])
+            sum += parameters.rho*fabs(field->dpdx[i]+field->dpdy[i]+field->dpdz[i]);
+
+    printf("Mass residual: %e\n", (sum)/myPointStruct->num_nodes);
 }
 
 

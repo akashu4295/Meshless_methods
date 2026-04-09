@@ -16,14 +16,6 @@
 /////////////////////////////////////////////////////////////////////////////
 // Fractional Step Explicit Solver Modules
 /////////////////////////////////////////////////////////////////////////////
-double calculate_dt(PointStructure* myPointStruct){
-    double dt = 1e10;
-    double d = myPointStruct->d_avg;
-    double termd =    2*parameters.nu/(d*d);
-    double termc =    1/d;
-    dt = 0.5/(termd + termc);
-    return (dt*parameters.courant_number);
-}
 
 double fractional_step_explicit_vectorised(PointStructure* myPointStruct, FieldVariables* field){   
     # pragma acc parallel loop present(field[0], myPointStruct[0])
@@ -48,9 +40,9 @@ double fractional_step_explicit_vectorised(PointStructure* myPointStruct, FieldV
         double du = field[0].u[i] - field[0].u_old[i];
         double dv = field[0].v[i] - field[0].v_old[i];
         double dw = field[0].w[i] - field[0].w_old[i];
-        steady_state_error_par += du*du + dv*dv + dw*dw;
+        steady_state_error_par += fabs(du) + fabs(dv) + fabs(dw);
     }
-    return sqrt(steady_state_error_par/myPointStruct[0].num_nodes);
+    return (steady_state_error_par/(parameters.dimension * myPointStruct[0].num_nodes * parameters.dt));
 }
 
 double fractional_step_explicit_vectorised_2d(PointStructure* myPointStruct, FieldVariables* field)
@@ -75,10 +67,10 @@ double fractional_step_explicit_vectorised_2d(PointStructure* myPointStruct, Fie
     for (int i = 0; i < myPointStruct[0].num_nodes; i++){
         double du = field[0].u[i] - field[0].u_old[i];
         double dv = field[0].v[i] - field[0].v_old[i];
-        steady_state_error_par += du*du + dv*dv;
+        steady_state_error_par += fabs(du) + fabs(dv);
     }
     
-    return sqrt(steady_state_error_par / myPointStruct[0].num_nodes);
+    return (steady_state_error_par/(parameters.dimension * myPointStruct[0].num_nodes * parameters.dt));
 }
 
 void FS_calculate_intermediate_velocity_vectorised(PointStructure* myPointStruct, FieldVariables* field)
@@ -105,23 +97,23 @@ void FS_calculate_intermediate_velocity_vectorised(PointStructure* myPointStruct
     }
     # pragma acc parallel loop gang vector default(present)
     for (int i = 0; i < myPointStruct->num_nodes; i++){
-        field->u_new[i] = field->u[i] - parameters.dt * (field->u[i] * field->dudx[i] + field->v[i] * field->dudy[i] + field->w[i] * field->dudz[i] - parameters.nu *field->lapu[i]);
+        field->u_new[i] = field->u[i] - parameters.dt * (field->u[i] * field->dudx[i] + field->v[i] * field->dudy[i] + field->w[i] * field->dudz[i] - parameters.nu * field->lapu[i]);
         field->v_new[i] = field->v[i] - parameters.dt * (field->u[i] * field->dvdx[i] + field->v[i] * field->dvdy[i] + field->w[i] * field->dvdz[i] - parameters.nu * field->lapv[i]);
         field->w_new[i] = field->w[i] - parameters.dt * (field->u[i] * field->dwdx[i] + field->v[i] * field->dwdy[i] + field->w[i] * field->dwdz[i] - parameters.nu * field->lapw[i]);
     }
-    /* ---- ENFORCE BOUNDARY CONDITIONS ON u* ---- */
-    # pragma acc parallel loop gang vector default(present)
-    for (int i = 0; i < myPointStruct->num_nodes; i++){
-        if (myPointStruct->boundary_tag[i] && !myPointStruct->corner_tag[i]){
-            if (myPointStruct->node_bc[i].type == BC_VELOCITY_INLET 
-                    || myPointStruct->node_bc[i].type == BC_WALL 
-                    || myPointStruct->node_bc[i].type == BC_VELOCITY_OUTLET){
-                field->u_new[i] = myPointStruct->node_bc[i].u;
-                field->v_new[i] = myPointStruct->node_bc[i].v;
-                field->w_new[i] = myPointStruct->node_bc[i].w;
-            }
-        }
-    }
+    // /* ---- ENFORCE BOUNDARY CONDITIONS ON u* ---- */
+    // # pragma acc parallel loop gang vector default(present)
+    // for (int i = 0; i < myPointStruct->num_nodes; i++){
+    //     if (myPointStruct->boundary_tag[i] && !myPointStruct->corner_tag[i]){
+    //         if (myPointStruct->node_bc[i].type == BC_VELOCITY_INLET 
+    //                 || myPointStruct->node_bc[i].type == BC_WALL 
+    //                 || myPointStruct->node_bc[i].type == BC_VELOCITY_OUTLET){
+    //             field->u_new[i] = myPointStruct->node_bc[i].u;
+    //             field->v_new[i] = myPointStruct->node_bc[i].v;
+    //             field->w_new[i] = myPointStruct->node_bc[i].w;
+    //         }
+    //     }
+    // }
 }
 
 // # pragma acc routine
@@ -395,7 +387,16 @@ void FS_update_velocity_vectorised(PointStructure* myPointStruct, FieldVariables
             field->v[i] = (sumvx * myPointStruct->x_normal[i] + sumvy * myPointStruct->y_normal[i] + sumvz * myPointStruct->z_normal[i]) / Ap;
             field->w[i] = (sumwx * myPointStruct->x_normal[i] + sumwy * myPointStruct->y_normal[i] + sumwz * myPointStruct->z_normal[i]) / Ap;
         }
-        else if (!myPointStruct->boundary_tag[i]){
+        else if (myPointStruct->boundary_tag[i] && !myPointStruct->corner_tag[i]){
+            if (myPointStruct->node_bc[i].type == BC_VELOCITY_INLET 
+                    || myPointStruct->node_bc[i].type == BC_WALL 
+                    || myPointStruct->node_bc[i].type == BC_VELOCITY_OUTLET){
+                field->u[i] = myPointStruct->node_bc[i].u;
+                field->v[i] = myPointStruct->node_bc[i].v;
+                field->w[i] = myPointStruct->node_bc[i].w;
+            }
+        }
+        else {//if (!myPointStruct->boundary_tag[i]){
             field->u[i] = field->u_new[i] - parameters.dt * field->dpdx[i]/parameters.rho;
             field->v[i] = field->v_new[i] - parameters.dt * field->dpdy[i]/parameters.rho;
             field->w[i] = field->w_new[i] - parameters.dt * field->dpdz[i]/parameters.rho;
@@ -404,16 +405,16 @@ void FS_update_velocity_vectorised(PointStructure* myPointStruct, FieldVariables
     
     # pragma acc data present(myPointStruct, field, parameters)
     {
-        multiply_sparse_matrix_vector_vectorised_gpu_async(myPointStruct->Dx, field->u, field->dpdx, myPointStruct->cloud_index, myPointStruct->num_nodes, myPointStruct->num_cloud_points, 4);
-        multiply_sparse_matrix_vector_vectorised_gpu_async(myPointStruct->Dy, field->v, field->dpdy, myPointStruct->cloud_index, myPointStruct->num_nodes, myPointStruct->num_cloud_points, 5);
-        multiply_sparse_matrix_vector_vectorised_gpu_async(myPointStruct->Dz, field->w, field->dpdz, myPointStruct->cloud_index, myPointStruct->num_nodes, myPointStruct->num_cloud_points, 6);
+        multiply_sparse_matrix_vector_vectorised_gpu_async(myPointStruct->Dx, field->u, field->dudx, myPointStruct->cloud_index, myPointStruct->num_nodes, myPointStruct->num_cloud_points, 4);
+        multiply_sparse_matrix_vector_vectorised_gpu_async(myPointStruct->Dy, field->v, field->dvdy, myPointStruct->cloud_index, myPointStruct->num_nodes, myPointStruct->num_cloud_points, 5);
+        multiply_sparse_matrix_vector_vectorised_gpu_async(myPointStruct->Dz, field->w, field->dwdz, myPointStruct->cloud_index, myPointStruct->num_nodes, myPointStruct->num_cloud_points, 6);
     }
     # pragma acc wait(4,5,6)
     double sum = 0.0;
     # pragma acc parallel loop gang vector default(present) reduction(+:sum)
     for (int i = 0; i < myPointStruct->num_nodes; i++)
         if (!myPointStruct->corner_tag[i])
-            sum += parameters.rho*fabs(field->dpdx[i]+field->dpdy[i]+field->dpdz[i]);
+            sum += parameters.rho*fabs(field->dudx[i]+field->dvdy[i]+field->dwdz[i]);
 
     printf("Mass residual: %e\n", (sum)/myPointStruct->num_nodes);
 }
@@ -445,7 +446,13 @@ void FS_update_velocity_vectorised_2d(PointStructure* myPointStruct, FieldVariab
             field->u[i] = (sumux * myPointStruct->x_normal[i] + sumuy * myPointStruct->y_normal[i]) / Ap;
             field->v[i] = (sumvx * myPointStruct->x_normal[i] + sumvy * myPointStruct->y_normal[i]) / Ap;
         }
-        else if (!myPointStruct->boundary_tag[i]){
+        else if (myPointStruct->node_bc[i].type == BC_VELOCITY_INLET 
+                    || myPointStruct->node_bc[i].type == BC_WALL 
+                    || myPointStruct->node_bc[i].type == BC_VELOCITY_OUTLET){
+            field->u[i] = myPointStruct->node_bc[i].u;
+            field->v[i] = myPointStruct->node_bc[i].v;
+        }
+        else {//if (!myPointStruct->boundary_tag[i]){
             field->u[i] = field->u_new[i] - parameters.dt * field->dpdx[i]/parameters.rho;
             field->v[i] = field->v_new[i] - parameters.dt * field->dpdy[i]/parameters.rho;
         }
@@ -453,8 +460,8 @@ void FS_update_velocity_vectorised_2d(PointStructure* myPointStruct, FieldVariab
     
     # pragma acc data present(myPointStruct, field, parameters)
     {   
-        multiply_sparse_matrix_vector_vectorised_gpu_async(myPointStruct->Dx, field->u, field->dpdx, myPointStruct->cloud_index, num_nodes, num_cloud_points, 3);
-        multiply_sparse_matrix_vector_vectorised_gpu_async(myPointStruct->Dy, field->v, field->dpdy,  myPointStruct->cloud_index, num_nodes, num_cloud_points, 4);
+        multiply_sparse_matrix_vector_vectorised_gpu_async(myPointStruct->Dx, field->u, field->dudx, myPointStruct->cloud_index, num_nodes, num_cloud_points, 3);
+        multiply_sparse_matrix_vector_vectorised_gpu_async(myPointStruct->Dy, field->v, field->dvdy,  myPointStruct->cloud_index, num_nodes, num_cloud_points, 4);
     }
     # pragma acc wait(3,4)
     
@@ -463,7 +470,7 @@ void FS_update_velocity_vectorised_2d(PointStructure* myPointStruct, FieldVariab
     #pragma acc parallel loop gang vector reduction(+:sum) default(present)
     for (int i = 0; i < num_nodes; i++)
         if (!myPointStruct->corner_tag[i])
-            sum += parameters.rho*fabs(field->dpdx[i]+field->dpdy[i]);
+            sum += parameters.rho*fabs(field->dudx[i]+field->dvdy[i]);
 
     printf("Mass residual: %e\n", sum/num_nodes);
 }
@@ -471,28 +478,19 @@ void FS_update_velocity_vectorised_2d(PointStructure* myPointStruct, FieldVariab
 /* ============================================================
    Meshless Laplacian operator identical to Jacobi/GS
    ============================================================ */
-static void apply_poisson_operator(
-        PointStructure *ps,
-        const double *x,
-        double *Ax)
+static void apply_poisson_operator(PointStructure *ps, const double *x, double *Ax)
 {
     int N = ps->num_nodes;
     int n = ps->num_cloud_points;
 
-    #pragma acc parallel loop present(ps->lap_Poison[:N*n], \
-                                      ps->cloud_index[:N*n], \
-                                      x[:N], Ax[:N])
+    #pragma acc parallel loop present(ps->lap_Poison[:N*n], ps->cloud_index[:N*n], x[:N], Ax[:N])
     for (int i = 0; i < N; i++) {
-
         double sum = 0.0;
-
         /* OFF-DIAGONALS ONLY (match Jacobi/GS) */
         for (int j = 1; j < n; j++) {
             int idx = i*n + j;
-            sum += ps->lap_Poison[idx] *
-                   x[ps->cloud_index[idx]];
+            sum += ps->lap_Poison[idx] * x[ps->cloud_index[idx]];
         }
-
         /* FULL operator */
         Ax[i] = ps->lap_Poison[i*n] * x[i] + sum;
     }
@@ -501,11 +499,7 @@ static void apply_poisson_operator(
 #define BICGSTAB_DEBUG 0
 
 
-void FS_relaxation_vectorised_BiCGStab(PointStructure* ps,
-                                      const double* b,
-                                      double* x,
-                                      int max_iter,
-                                      double tol)
+void FS_relaxation_vectorised_BiCGStab(PointStructure* ps, const double* b, double* x, int max_iter, double tol)
 {
     int N = ps->num_nodes;
     int n = ps->num_cloud_points;

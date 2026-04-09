@@ -99,6 +99,8 @@ typedef struct PointStructure {
     int num_boundary_nodes; // number of boundary nodes
     int num_elem; // number of elements
     double d_avg; // average distance between nodes
+    double d_min; // minimum distance between nodes
+    double d_max; // maximum distance between nodes
     short num_poly_terms; //number of polynomial terms  //////NUM_POLY_TERMS
     short num_cloud_points; //number of cloud points in the domain
     short poly_degree; //degree of the polynomial basis functions

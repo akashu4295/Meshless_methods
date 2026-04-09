@@ -5,6 +5,10 @@ config/
 data/
 linear_stability.c
 mg_heat_conduction.c
+plot_data.ipynb
+parameters_file.csv
+out
+a.out
 test*
 *.jpg
 *.jpeg

@@ -1,0 +1,4 @@
+Wall,wall,u=0.0,v=0.0,w=0.0
+Outlet,pressure_outlet,p=0.0
+Inlet,velocity_inlet,u=0.0,v=0.0,w=1.0;
+Fluid,interior

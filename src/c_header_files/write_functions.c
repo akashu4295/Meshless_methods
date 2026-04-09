@@ -200,11 +200,12 @@ typedef struct {
     double *p;  // pressure
 } Field;
 
-int write_vtk(char *gmsh_filename, FieldVariables *field, PointStructure* myPS)
+int write_vtk(char *gmsh_filename, FieldVariables *field, PointStructure* myPS, char *sol_filename)
 {
     FILE *fp_in, *fp_out;
     char line[256];
-    char vtk_filename[256] = "Solution.vtk";
+    char vtk_filename[256];
+    sprintf(vtk_filename, "%s.vtk", sol_filename);
 
     int num_nodes = 0, num_elements = 0;
     int i, node_id;

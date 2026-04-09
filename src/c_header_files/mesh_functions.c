@@ -1141,9 +1141,12 @@ void create_prolongation_and_restriction_matrices(PointStructure* myPointStruct,
     printf("Prolongation and restriction points identified\n");
 }
 
-void calculate_avg_dx(PointStructure* myPointStruct){
+void calculate_point_spacings(PointStructure* myPointStruct){
     double dx, dy, dz;
     myPointStruct->d_avg = 0;
+    myPointStruct->d_min = 1e10;
+    myPointStruct->d_max = 0;
+    double temp;
     int n = myPointStruct->num_cloud_points;
     for (int i = 0; i < myPointStruct->num_nodes; i++){
         if (!myPointStruct->boundary_tag[i]){
@@ -1153,11 +1156,26 @@ void calculate_avg_dx(PointStructure* myPointStruct){
                 dz = myPointStruct->z[i] - myPointStruct->z[myPointStruct->cloud_index[i*n +1]];
             else
                 dz = 0;
-            myPointStruct->d_avg += sqrt(dx*dx + dy*dy + dz*dz);
+            temp = sqrt(dx*dx + dy*dy + dz*dz);
+            myPointStruct->d_avg += temp;
+            if (temp < myPointStruct->d_min)
+                myPointStruct->d_min = temp;
+            if (temp > myPointStruct->d_max)
+                myPointStruct->d_max = temp;
         }
     }
     myPointStruct->d_avg = myPointStruct->d_avg/myPointStruct->num_nodes;
 }
+
+double calculate_dt(PointStructure* myPointStruct){
+    double dt = 1e10;
+    double d = myPointStruct->d_min;
+    double termd =  parameters.dimension* parameters.nu/(d*d);
+    double termc =    1/d;
+    dt = 1/(termd + termc);
+    return (fmin(dt*parameters.courant_number/parameters.dimension, parameters.dt));
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -1174,8 +1192,9 @@ void read_complete_mesh_data(PointStructure* myPointStruct, short num_levels)
         rcm_reordering_with_boundarynodes(&myPointStruct[ii]);
         printf("Correcting normal directions\n");
         correct_normal_directions(&myPointStruct[ii]);
-        printf("Calculating average nodal distance\n");
-        calculate_avg_dx(&myPointStruct[ii]);
+        printf("Calculating nodal distances\n");
+        calculate_point_spacings(&myPointStruct[ii]);
     }
+    parameters.dt = calculate_dt(&myPointStruct[0]);
     create_prolongation_and_restriction_matrices(myPointStruct, num_levels);
 }
